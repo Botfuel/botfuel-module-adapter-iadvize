@@ -1,0 +1,1 @@
+# botfuel-module-adapter-iadvize
