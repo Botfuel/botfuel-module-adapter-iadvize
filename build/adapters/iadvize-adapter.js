@@ -2,8 +2,6 @@
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -56,6 +54,14 @@ var IadvizeAdapter = function (_WebAdapter) {
       };
     }
   }, {
+    key: 'adaptTransfer',
+    value: function adaptTransfer(message) {
+      return {
+        type: 'transfer',
+        distributionRule: message.payload.options.distributionRuleId
+      };
+    }
+  }, {
     key: 'adaptQuickreplies',
     value: function adaptQuickreplies(message) {
       return {
@@ -81,6 +87,8 @@ var IadvizeAdapter = function (_WebAdapter) {
           return this.adaptText(message);
         case 'quickreplies':
           return this.adaptQuickreplies(message);
+        case 'transfer':
+          return this.adaptTransfer(message);
         default:
           throw new Error('Message of type ' + message.type + ' are not supported by this adapter.');
       }
@@ -153,7 +161,7 @@ var IadvizeAdapter = function (_WebAdapter) {
       // This endpoint should return a response containing the bot answers.
       app.post('/conversations/:conversationId/messages', function () {
         var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3(req, res) {
-          var botMessages, isTransferMessage, distributionRuleId;
+          var botMessages;
           return regeneratorRuntime.wrap(function _callee3$(_context3) {
             while (1) {
               switch (_context3.prev = _context3.next) {
@@ -188,51 +196,16 @@ var IadvizeAdapter = function (_WebAdapter) {
 
                 case 6:
                   botMessages = _context3.sent;
-
-
-                  // If bot replies with a transfer message, transfer to user to another operator
-                  isTransferMessage = botMessages.some(function (message) {
-                    return message.type === 'transfer';
-                  });
-
-                  if (!isTransferMessage) {
-                    _context3.next = 13;
-                    break;
-                  }
-
-                  distributionRuleId = req.body.operator && req.body.operator.distributionRules && req.body.operator.distributionRules[0] && req.body.operator.distributionRules[0].id;
-
-                  if (distributionRuleId) {
-                    _context3.next = 12;
-                    break;
-                  }
-
-                  return _context3.abrupt('return', res.sendStatus(500));
-
-                case 12:
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
-                    replies: [{
-                      type: 'transfer',
-                      distributionRule: distributionRuleId
-                    }],
+                    replies: botMessages.map(_this2.adaptMessage),
                     variables: [],
                     createdAt: new Date(),
                     updatedAt: new Date()
                   }));
 
-                case 13:
-                  return _context3.abrupt('return', res.send({
-                    idOperator: req.body.idOperator,
-                    idConversation: req.params.conversationId,
-                    replies: [{ type: 'await', duration: { value: 2, unit: 'seconds' } }].concat(_toConsumableArray(botMessages.map(_this2.adaptMessage))),
-                    variables: [],
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                  }));
-
-                case 14:
+                case 8:
                 case 'end':
                   return _context3.stop();
               }

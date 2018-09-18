@@ -34,6 +34,13 @@ class IadvizeAdapter extends WebAdapter {
     };
   }
 
+  adaptTransfer(message) {
+    return {
+      type: 'transfer',
+      distributionRule: message.payload.options.distributionRuleId,
+    };
+  }
+
   adaptQuickreplies(message) {
     return {
       type: 'message',
@@ -55,6 +62,8 @@ class IadvizeAdapter extends WebAdapter {
         return this.adaptText(message);
       case 'quickreplies':
         return this.adaptQuickreplies(message);
+      case 'transfer':
+        return this.adaptTransfer(message);
       default:
         throw new Error(
           `Message of type ${message.type} are not supported by this adapter.`
@@ -105,7 +114,7 @@ class IadvizeAdapter extends WebAdapter {
         });
       }
 
-      const botMessages = await this.bot.handleMessage(
+      let botMessages = await this.bot.handleMessage(
         this.extendMessage({
           type: 'text',
           user: req.params.conversationId,
@@ -115,44 +124,10 @@ class IadvizeAdapter extends WebAdapter {
         })
       );
 
-      // If bot replies with a transfer message, transfer to user to another operator
-      const isTransferMessage = botMessages.some(
-        message => message.type === 'transfer'
-      );
-
-      if (isTransferMessage) {
-        const distributionRuleId =
-          req.body.operator &&
-          req.body.operator.distributionRules &&
-          req.body.operator.distributionRules[0] &&
-          req.body.operator.distributionRules[0].id;
-
-        if (!distributionRuleId) {
-          return res.sendStatus(500);
-        }
-
-        return res.send({
-          idOperator: req.body.idOperator,
-          idConversation: req.params.conversationId,
-          replies: [
-            {
-              type: 'transfer',
-              distributionRule: distributionRuleId,
-            },
-          ],
-          variables: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-
       return res.send({
         idOperator: req.body.idOperator,
         idConversation: req.params.conversationId,
-        replies: [
-          { type: 'await', duration: { value: 2, unit: 'seconds' } },
-          ...botMessages.map(this.adaptMessage),
-        ],
+        replies: botMessages.map(this.adaptMessage),
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date(),
