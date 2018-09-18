@@ -4,5 +4,5 @@ const TransferAction = require('./build/transfer-action');
 module.exports = {
   botfuelModuleRoot: 'build',
   IadvizeAdapter,
-  TransferAction: ,
+  TransferAction,
 };
