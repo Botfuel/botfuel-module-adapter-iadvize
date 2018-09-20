@@ -32,10 +32,10 @@ module.exports = {
 To transfer to a distribution rule, include a `TransferAction` in the messages returned by your view:
 
 ```js
-const { TextView } = require('botfuel-dialog');
+const { View } = require('botfuel-dialog');
 const { TransferAction } = require('botfuel-module-adapter-iadvize');
 
-class TransferView extends TextView {
+class TransferView extends View {
   render() {
     return [
       new TransferAction({
