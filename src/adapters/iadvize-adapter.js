@@ -73,28 +73,35 @@ class IadvizeAdapter extends WebAdapter {
 
   handleTransferFailure({
     res,
+    transferMessage,
     idOperator,
     conversationId,
     awaitDuration,
     failureMessage,
   }) {
+    const failureHandlingMessage = [
+      {
+        type: 'await',
+        duration: {
+          unit: 'seconds',
+          value: awaitDuration,
+        },
+      },
+      this.adaptText({
+        payload: {
+          value: failureMessage,
+        },
+      }),
+    ];
+
+    const replies = !!transferMessage
+      ? [transferMessage, ...failureHandlingMessage]
+      : failureHandlingMessage;
+
     return res.send({
       idOperator: idOperator,
       idConversation: conversationId,
-      replies: [
-        {
-          type: 'await',
-          duration: {
-            unit: 'seconds',
-            value: awaitDuration,
-          },
-        },
-        this.adaptText({
-          payload: {
-            value: failureMessage,
-          },
-        }),
-      ],
+      replies,
       variables: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -193,6 +200,7 @@ class IadvizeAdapter extends WebAdapter {
       if (transferMessageIndex === 0) {
         return this.handleTransferFailure({
           res,
+          transferMessage: botMessages.map(this.adaptMessage)[0],
           idOperator: req.body.idOperator,
           conversationId: req.params.conversationId,
           awaitDuration: transferMessage.payload.options.awaitDuration,

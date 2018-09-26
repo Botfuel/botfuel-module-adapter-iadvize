@@ -97,27 +97,30 @@ var IadvizeAdapter = function (_WebAdapter) {
     key: 'handleTransferFailure',
     value: function handleTransferFailure(_ref) {
       var res = _ref.res,
+          transferMessage = _ref.transferMessage,
           idOperator = _ref.idOperator,
           conversationId = _ref.conversationId,
           awaitDuration = _ref.awaitDuration,
           failureMessage = _ref.failureMessage;
 
-      console.log({ awaitDuration: awaitDuration, failureMessage: failureMessage });
+      var failureHandlingMessage = [{
+        type: 'await',
+        duration: {
+          unit: 'seconds',
+          value: awaitDuration
+        }
+      }, this.adaptText({
+        payload: {
+          value: failureMessage
+        }
+      })];
+
+      var replies = !!transferMessage ? [transferMessage].concat(failureHandlingMessage) : failureHandlingMessage;
 
       return res.send({
         idOperator: idOperator,
         idConversation: conversationId,
-        replies: [{
-          type: 'await',
-          duration: {
-            unit: 'seconds',
-            value: awaitDuration
-          }
-        }, this.adaptText({
-          payload: {
-            value: failureMessage
-          }
-        })],
+        replies: replies,
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -199,38 +202,26 @@ var IadvizeAdapter = function (_WebAdapter) {
                   return _this2.addUserIfNecessary(req.params.conversationId);
 
                 case 2:
-                  console.log(req.body);
-
-                  // Operator messages are sent to this endpoint too, like visitor messages
-
                   if (!(req.body.message.author.role === 'operator')) {
-                    _context3.next = 15;
+                    _context3.next = 13;
                     break;
                   }
 
-                  _context3.next = 6;
+                  _context3.next = 5;
                   return _this2.bot.brain.userGet(req.params.conversationId, 'transfer');
 
-                case 6:
+                case 5:
                   transferData = _context3.sent;
 
-                  console.log({ transferData: transferData });
-
-                  // If transfer data was saved from the previous step, it means bot has started a transfer
-                  // and it needs to handle possible transfer failure
-                  // by awaiting and sending a transfer failure message
-                  // If the message is sent from operator and is not a transfer request, it means it follows normal replies
-                  // from the bot, so do not send any reply
-
                   if (!transferData) {
-                    _context3.next = 14;
+                    _context3.next = 12;
                     break;
                   }
 
-                  _context3.next = 11;
+                  _context3.next = 9;
                   return _this2.bot.brain.userSet(req.params.conversationId, 'transfer', null);
 
-                case 11:
+                case 9:
                   return _context3.abrupt('return', _this2.handleTransferFailure({
                     res: res,
                     idOperator: req.body.idOperator,
@@ -239,7 +230,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     failureMessage: transferData.failureMessage
                   }));
 
-                case 14:
+                case 12:
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
@@ -249,8 +240,8 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 15:
-                  _context3.next = 17;
+                case 13:
+                  _context3.next = 15;
                   return _this2.bot.handleMessage(_this2.extendMessage({
                     type: 'text',
                     user: req.params.conversationId,
@@ -259,7 +250,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     }
                   }));
 
-                case 17:
+                case 15:
                   botMessages = _context3.sent;
                   transferMessageIndex = botMessages.findIndex(function (message) {
                     return message.type === 'transfer';
@@ -269,36 +260,38 @@ var IadvizeAdapter = function (_WebAdapter) {
                   });
 
 
-                  console.log(botMessages);
+                  console.log(transferMessageIndex);
+                  console.log(transferMessage);
 
                   // Handle failure now if transfer message is the first one
 
                   if (!(transferMessageIndex === 0)) {
-                    _context3.next = 23;
+                    _context3.next = 22;
                     break;
                   }
 
                   return _context3.abrupt('return', _this2.handleTransferFailure({
                     res: res,
+                    transferMessage: botMessages.map(_this2.adaptMessage)[0],
                     idOperator: req.body.idOperator,
                     conversationId: req.params.conversationId,
                     awaitDuration: transferMessage.payload.options.awaitDuration,
                     failureMessage: transferMessage.payload.options.failureMessage
                   }));
 
-                case 23:
+                case 22:
                   if (!(transferMessageIndex > 0)) {
-                    _context3.next = 26;
+                    _context3.next = 25;
                     break;
                   }
 
-                  _context3.next = 26;
+                  _context3.next = 25;
                   return _this2.bot.brain.userSet(req.params.conversationId, 'transfer', {
                     await: transferMessage.payload.options.awaitDuration,
                     failureMessage: transferMessage.payload.options.failureMessage
                   });
 
-                case 26:
+                case 25:
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
@@ -308,7 +301,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 27:
+                case 26:
                 case 'end':
                   return _context3.stop();
               }
