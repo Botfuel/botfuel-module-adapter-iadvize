@@ -94,6 +94,36 @@ var IadvizeAdapter = function (_WebAdapter) {
       }
     }
   }, {
+    key: 'handleTransferFailure',
+    value: function handleTransferFailure(_ref) {
+      var res = _ref.res,
+          idOperator = _ref.idOperator,
+          conversationId = _ref.conversationId,
+          awaitDuration = _ref.awaitDuration,
+          failureMessage = _ref.failureMessage;
+
+      console.log({ awaitDuration: awaitDuration, failureMessage: failureMessage });
+
+      return res.send({
+        idOperator: idOperator,
+        idConversation: conversationId,
+        replies: [{
+          type: 'await',
+          duration: {
+            unit: 'seconds',
+            value: awaitDuration
+          }
+        }, this.adaptText({
+          payload: {
+            value: failureMessage
+          }
+        })],
+        variables: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+    }
+  }, {
     key: 'createRoutes',
     value: function createRoutes(app) {
       var _this2 = this;
@@ -101,7 +131,7 @@ var IadvizeAdapter = function (_WebAdapter) {
       // Conversation initialization. This is done when the first user message is sent
       // We don't do much here.
       app.post('/conversations', function () {
-        var _ref = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(req, res) {
+        var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(req, res) {
           return regeneratorRuntime.wrap(function _callee$(_context) {
             while (1) {
               switch (_context.prev = _context.next) {
@@ -124,13 +154,12 @@ var IadvizeAdapter = function (_WebAdapter) {
         }));
 
         return function (_x, _x2) {
-          return _ref.apply(this, arguments);
+          return _ref2.apply(this, arguments);
         };
       }());
 
-      // Doesn't seem to be used... Should be used to retreive messages from a conversation?
-      app.get('/conversations/:conversationId/messages', function () {
-        var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(req, res) {
+      app.get('/conversations/:conversationId', function () {
+        var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(req, res) {
           return regeneratorRuntime.wrap(function _callee2$(_context2) {
             while (1) {
               switch (_context2.prev = _context2.next) {
@@ -153,15 +182,15 @@ var IadvizeAdapter = function (_WebAdapter) {
         }));
 
         return function (_x3, _x4) {
-          return _ref2.apply(this, arguments);
+          return _ref3.apply(this, arguments);
         };
       }());
 
-      // Bot receives user messages on this endpoint.
+      // Bot receives user messages AND bot (operator) messages on this endpoint.
       // This endpoint should return a response containing the bot answers.
       app.post('/conversations/:conversationId/messages', function () {
-        var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3(req, res) {
-          var botMessages;
+        var _ref4 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3(req, res) {
+          var transferData, botMessages, transferMessageIndex, transferMessage;
           return regeneratorRuntime.wrap(function _callee3$(_context3) {
             while (1) {
               switch (_context3.prev = _context3.next) {
@@ -170,11 +199,47 @@ var IadvizeAdapter = function (_WebAdapter) {
                   return _this2.addUserIfNecessary(req.params.conversationId);
 
                 case 2:
+                  console.log(req.body);
+
+                  // Operator messages are sent to this endpoint too, like visitor messages
+
                   if (!(req.body.message.author.role === 'operator')) {
-                    _context3.next = 4;
+                    _context3.next = 15;
                     break;
                   }
 
+                  _context3.next = 6;
+                  return _this2.bot.brain.userGet(req.params.conversationId, 'transfer');
+
+                case 6:
+                  transferData = _context3.sent;
+
+                  console.log({ transferData: transferData });
+
+                  // If transfer data was saved from the previous step, it means bot has started a transfer
+                  // and it needs to handle possible transfer failure
+                  // by awaiting and sending a transfer failure message
+                  // If the message is sent from operator and is not a transfer request, it means it follows normal replies
+                  // from the bot, so do not send any reply
+
+                  if (!transferData) {
+                    _context3.next = 14;
+                    break;
+                  }
+
+                  _context3.next = 11;
+                  return _this2.bot.brain.userSet(req.params.conversationId, 'transfer', null);
+
+                case 11:
+                  return _context3.abrupt('return', _this2.handleTransferFailure({
+                    res: res,
+                    idOperator: req.body.idOperator,
+                    conversationId: req.params.conversationId,
+                    awaitDuration: transferData.await,
+                    failureMessage: transferData.failureMessage
+                  }));
+
+                case 14:
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
@@ -184,8 +249,8 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 4:
-                  _context3.next = 6;
+                case 15:
+                  _context3.next = 17;
                   return _this2.bot.handleMessage(_this2.extendMessage({
                     type: 'text',
                     user: req.params.conversationId,
@@ -194,8 +259,46 @@ var IadvizeAdapter = function (_WebAdapter) {
                     }
                   }));
 
-                case 6:
+                case 17:
                   botMessages = _context3.sent;
+                  transferMessageIndex = botMessages.findIndex(function (message) {
+                    return message.type === 'transfer';
+                  });
+                  transferMessage = botMessages.find(function (message) {
+                    return message.type === 'transfer';
+                  });
+
+
+                  console.log(botMessages);
+
+                  // Handle failure now if transfer message is the first one
+
+                  if (!(transferMessageIndex === 0)) {
+                    _context3.next = 23;
+                    break;
+                  }
+
+                  return _context3.abrupt('return', _this2.handleTransferFailure({
+                    res: res,
+                    idOperator: req.body.idOperator,
+                    conversationId: req.params.conversationId,
+                    awaitDuration: transferMessage.payload.options.awaitDuration,
+                    failureMessage: transferMessage.payload.options.failureMessage
+                  }));
+
+                case 23:
+                  if (!(transferMessageIndex > 0)) {
+                    _context3.next = 26;
+                    break;
+                  }
+
+                  _context3.next = 26;
+                  return _this2.bot.brain.userSet(req.params.conversationId, 'transfer', {
+                    await: transferMessage.payload.options.awaitDuration,
+                    failureMessage: transferMessage.payload.options.failureMessage
+                  });
+
+                case 26:
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
@@ -205,7 +308,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 8:
+                case 27:
                 case 'end':
                   return _context3.stop();
               }
@@ -214,7 +317,7 @@ var IadvizeAdapter = function (_WebAdapter) {
         }));
 
         return function (_x5, _x6) {
-          return _ref3.apply(this, arguments);
+          return _ref4.apply(this, arguments);
         };
       }());
 

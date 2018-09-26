@@ -13,12 +13,18 @@ module.exports = function (_Message) {
   _inherits(TransferAction, _Message);
 
   function TransferAction(_ref) {
-    var distributionRuleId = _ref.distributionRuleId;
+    var distributionRuleId = _ref.distributionRuleId,
+        _ref$failureMessage = _ref.failureMessage,
+        failureMessage = _ref$failureMessage === undefined ? 'Le transfert a échoué.' : _ref$failureMessage,
+        _ref$awaitDuration = _ref.awaitDuration,
+        awaitDuration = _ref$awaitDuration === undefined ? 30 : _ref$awaitDuration;
 
     _classCallCheck(this, TransferAction);
 
     return _possibleConstructorReturn(this, (TransferAction.__proto__ || Object.getPrototypeOf(TransferAction)).call(this, 'transfer', 'bot', null, {
-      distributionRuleId: distributionRuleId
+      distributionRuleId: distributionRuleId,
+      failureMessage: failureMessage,
+      awaitDuration: awaitDuration
     }));
   }
 

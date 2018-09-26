@@ -38,8 +38,13 @@ const { TransferAction } = require('botfuel-module-adapter-iadvize');
 class TransferView extends View {
   render() {
     return [
+      new BotTextMessage('I’m going to transfer you, please wait :)'),
       new TransferAction({
         distributionRuleId: 'the distribution rule id you want to transfer to',
+        // Transfer attempt failure message
+        failureMessage: 'Sorry, nobody is available right now.',
+        // Transfer attempt timeout, default 30 seconds
+        awaitDuration: 20,
       }),
     ];
   }

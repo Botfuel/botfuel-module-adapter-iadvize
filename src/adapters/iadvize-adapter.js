@@ -71,6 +71,36 @@ class IadvizeAdapter extends WebAdapter {
     }
   }
 
+  handleTransferFailure({
+    res,
+    idOperator,
+    conversationId,
+    awaitDuration,
+    failureMessage,
+  }) {
+    return res.send({
+      idOperator: idOperator,
+      idConversation: conversationId,
+      replies: [
+        {
+          type: 'await',
+          duration: {
+            unit: 'seconds',
+            value: awaitDuration,
+          },
+        },
+        this.adaptText({
+          payload: {
+            value: failureMessage,
+          },
+        }),
+      ],
+      variables: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
   createRoutes(app) {
     // Conversation initialization. This is done when the first user message is sent
     // We don't do much here.
@@ -85,8 +115,7 @@ class IadvizeAdapter extends WebAdapter {
       });
     });
 
-    // Doesn't seem to be used... Should be used to retreive messages from a conversation?
-    app.get('/conversations/:conversationId/messages', async (req, res) => {
+    app.get('/conversations/:conversationId', async (req, res) => {
       res.send({
         idConversation: req.params.conversationId,
         idOperator: req.query.idOperator,
@@ -97,22 +126,50 @@ class IadvizeAdapter extends WebAdapter {
       });
     });
 
-    // Bot receives user messages on this endpoint.
+    // Bot receives user messages AND bot (operator) messages on this endpoint.
     // This endpoint should return a response containing the bot answers.
     app.post('/conversations/:conversationId/messages', async (req, res) => {
       await this.addUserIfNecessary(req.params.conversationId);
 
-      // If the message is sent from operator, it means it is from the bot, so do not send any reply
+      // Operator messages are sent to this endpoint too, like visitor messages
       if (req.body.message.author.role === 'operator') {
-        return res.send({
-          idOperator: req.body.idOperator,
-          idConversation: req.params.conversationId,
-          replies: [],
-          variables: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+        const transferData = await this.bot.brain.userGet(
+          req.params.conversationId,
+          'transfer'
+        );
+
+        // If transfer data was saved from the previous step, it means bot has started a transfer
+        // and it needs to handle possible transfer failure
+        // by awaiting and sending a transfer failure message
+        // If the message is sent from operator and is not a transfer request, it means it follows normal replies
+        // from the bot, so do not send any reply
+        if (transferData) {
+          await this.bot.brain.userSet(
+            req.params.conversationId,
+            'transfer',
+            null
+          );
+
+          return this.handleTransferFailure({
+            res,
+            idOperator: req.body.idOperator,
+            conversationId: req.params.conversationId,
+            awaitDuration: transferData.await,
+            failureMessage: transferData.failureMessage,
+          });
+        } else {
+          return res.send({
+            idOperator: req.body.idOperator,
+            idConversation: req.params.conversationId,
+            replies: [],
+            variables: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
       }
+
+      // Here role === 'visitor'
 
       let botMessages = await this.bot.handleMessage(
         this.extendMessage({
@@ -124,6 +181,35 @@ class IadvizeAdapter extends WebAdapter {
         })
       );
 
+      const transferMessageIndex = botMessages.findIndex(
+        message => message.type === 'transfer'
+      );
+
+      const transferMessage = botMessages.find(
+        message => message.type === 'transfer'
+      );
+
+      // Handle failure now if transfer message is the first one
+      if (transferMessageIndex === 0) {
+        return this.handleTransferFailure({
+          res,
+          idOperator: req.body.idOperator,
+          conversationId: req.params.conversationId,
+          awaitDuration: transferMessage.payload.options.awaitDuration,
+          failureMessage: transferMessage.payload.options.failureMessage,
+        });
+      }
+
+      // If botMessages contains a transfer message and it's not the first message, save in the brain
+      // the fact that we have to handle transfer message failure on next bot message
+      if (transferMessageIndex > 0) {
+        await this.bot.brain.userSet(req.params.conversationId, 'transfer', {
+          await: transferMessage.payload.options.awaitDuration,
+          failureMessage: transferMessage.payload.options.failureMessage,
+        });
+      }
+
+      // Normal case: reply bot messages to the user
       return res.send({
         idOperator: req.body.idOperator,
         idConversation: req.params.conversationId,
