@@ -27,17 +27,24 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
  */
 
 var _require = require('botfuel-dialog'),
-    WebAdapter = _require.WebAdapter;
+    WebAdapter = _require.WebAdapter,
+    Logger = _require.Logger;
+
+var DEFAULT_STOP_DELAY = 300; // 5min in second
+
+var logger = Logger('IadvizeAdapter');
 
 var IadvizeAdapter = function (_WebAdapter) {
   _inherits(IadvizeAdapter, _WebAdapter);
 
-  function IadvizeAdapter(parameters) {
+  function IadvizeAdapter(bot) {
     _classCallCheck(this, IadvizeAdapter);
 
-    var _this = _possibleConstructorReturn(this, (IadvizeAdapter.__proto__ || Object.getPrototypeOf(IadvizeAdapter)).call(this, parameters));
+    var _this = _possibleConstructorReturn(this, (IadvizeAdapter.__proto__ || Object.getPrototypeOf(IadvizeAdapter)).call(this, bot));
 
+    _this.stopConversationDelay = _this.computeStopConversationDelay(bot); // Should be in second
     _this.adaptMessage = _this.adaptMessage.bind(_this);
+    _this.buildBotReplies = _this.buildBotReplies.bind(_this);
     return _this;
   }
 
@@ -89,6 +96,7 @@ var IadvizeAdapter = function (_WebAdapter) {
   }, {
     key: 'adaptMessage',
     value: function adaptMessage(message) {
+      logger.debug('adaptMessage', message);
       switch (message.type) {
         case 'text':
           return this.adaptText(message);
@@ -112,6 +120,7 @@ var IadvizeAdapter = function (_WebAdapter) {
           awaitDuration = _ref.awaitDuration,
           failureMessage = _ref.failureMessage;
 
+      logger.debug('handleTransferFailure', transferMessage, idOperator, conversationId, awaitDuration, failureMessage);
       var failureHandlingMessage = [{
         type: 'await',
         duration: {
@@ -136,10 +145,44 @@ var IadvizeAdapter = function (_WebAdapter) {
       });
     }
   }, {
+    key: 'buildBotReplies',
+    value: function buildBotReplies(botMessages) {
+      logger.debug('buildBotReplies:botMessages', botMessages);
+      // Define await message using the delay
+      // defined in the configuration or as an environment variable
+      var awaitMessage = {
+        type: 'await',
+        duration: {
+          unit: 'seconds',
+          value: this.stopConversationDelay
+        }
+      };
+      // Define the stop message
+      var stopMessage = {
+        type: 'stop'
+      };
+      var stopMessageIndex = botMessages.findIndex(function (m) {
+        return m.type === stopMessage.type;
+      });
+      var replies = botMessages.map(this.adaptMessage);
+      // If a stop message is already in bot messages
+      // Then insert an await message just before the stop message
+      // Else push the await + stop messages at the end of bot messages
+      if (stopMessageIndex !== -1) {
+        replies.splice(stopMessageIndex, 0, awaitMessage);
+      } else {
+        replies.push(awaitMessage, stopMessage);
+      }
+
+      logger.debug('buildBotReplies:replies', replies);
+      return replies;
+    }
+  }, {
     key: 'createRoutes',
     value: function createRoutes(app) {
       var _this2 = this;
 
+      logger.debug('createRoutes');
       // Conversation initialization. This is done when the first user message is sent
       // We don't do much here.
       app.post('/conversations', function () {
@@ -300,7 +343,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
-                    replies: botMessages.map(_this2.adaptMessage),
+                    replies: _this2.buildBotReplies(botMessages),
                     variables: [],
                     createdAt: new Date(),
                     updatedAt: new Date()
@@ -328,6 +371,12 @@ var IadvizeAdapter = function (_WebAdapter) {
           availability: true
         }]);
       });
+    }
+  }, {
+    key: 'computeStopConversationDelay',
+    value: function computeStopConversationDelay(bot) {
+      logger.debug('computeStopConversationDelay');
+      return process.env.STOP_CONVERSATION_DELAY || bot.config.adapter.stopConversationDelay || DEFAULT_STOP_DELAY;
     }
   }]);
 
