@@ -56,7 +56,7 @@ class TransferView extends View {
 
 ### Stop action
 
-The stop action is used to close a conversation after a configurable delay where the bot didn't answered anything.
+To close the conversation on iAdvize side, include a `StopAction` in the messages returned by your view:
 
 ```js
 const { View } = require('botfuel-dialog');
@@ -72,16 +72,16 @@ class TransferView extends View {
 }
 ```
 
+The conversation will be closed after a delay where the bot didn't answered anything.
+
 #### Stop action delay
 
-This delay is the delay after which the conversation will be closed on iAdvize.
+The default value of this delay is **5 min** (300 seconds) but it is configurable.
 
-There is two way to define it, by using the bot **configuration** or a **environment variable**.
+There is two way to configure it, using the bot **configuration** or an **environment variable**.
 The environment variable will have the priority over the configuration.
 
-The default value of the delay is **5 min** (300 seconds).
-
-If you want to do it in the configuration of your bot you can define a key `stopConversationDelay` in the configuration file, under the adapter key:
+If you want to configure it in the configuration of your bot you can define a key `stopConversationDelay` in the configuration file, under the adapter key:
 
 ```js
 module.exports = {
