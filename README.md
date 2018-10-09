@@ -28,6 +28,9 @@ module.exports = {
 - Text messages
 - Quickreplies
 - Transfer (included in this module)
+- Stop (included in this module)
+
+### Transfer action
 
 To transfer to a distribution rule, include a `TransferAction` in the messages returned by your view:
 
@@ -50,3 +53,44 @@ class TransferView extends View {
   }
 }
 ```
+
+### Stop action
+
+The stop action is used to close a conversation after a configurable delay where the bot didn't answered anything.
+
+```js
+const { View } = require('botfuel-dialog');
+const { StopAction } = require('botfuel-module-adapter-iadvize');
+
+class TransferView extends View {
+  render() {
+    return [
+      new BotTextMessage('I’m going to close this conversation.'),
+      new StopAction(),
+    ];
+  }
+}
+```
+
+#### Stop action delay
+
+This delay is the delay after which the conversation will be closed on iAdvize.
+
+There is two way to define it, by using the bot **configuration** or a **environment variable**.
+The environment variable will have the priority over the configuration.
+
+The default value of the delay is **5 min** (300 seconds).
+
+If you want to do it in the configuration of your bot you can define a key `stopConversationDelay` in the configuration file, under the adapter key:
+
+```js
+module.exports = {
+  adapter: {
+    name: 'iadvize',
+    stopConversationDelay: 300, // the value is in seconds
+  },
+  modules: ['botfuel-module-adapter-iadvize'],
+};
+```
+
+If you want to use an environment variable you can define the `STOP_CONVERSATION_DELAY` environment variable.
