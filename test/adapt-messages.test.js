@@ -71,4 +71,34 @@ describe('adapting messages', () => {
       ],
     });
   });
+
+  test('should generate the proper transfer message json', () => {
+    expect(
+      adapter.adaptMessage({
+        id: 1,
+        payload: {
+          value: null,
+          options: {
+            distributionRuleId: 'THE_RULE_ID'
+          }
+        },
+        sender: 'bot',
+        type: 'transfer',
+      })
+    ).toEqual({
+      type: 'transfer',
+      distributionRule: 'THE_RULE_ID',
+    });
+  });
+
+  test('should generate the proper stop message json', () => {
+    expect(
+      adapter.adaptMessage({
+        id: 1,
+        payload: null,
+        sender: 'bot',
+        type: 'stop',
+      })
+    ).toEqual({ type: 'stop' });
+  });
 });

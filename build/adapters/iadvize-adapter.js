@@ -62,6 +62,13 @@ var IadvizeAdapter = function (_WebAdapter) {
       };
     }
   }, {
+    key: 'adaptStop',
+    value: function adaptStop() {
+      return {
+        type: 'stop'
+      };
+    }
+  }, {
     key: 'adaptQuickreplies',
     value: function adaptQuickreplies(message) {
       return {
@@ -89,6 +96,8 @@ var IadvizeAdapter = function (_WebAdapter) {
           return this.adaptQuickreplies(message);
         case 'transfer':
           return this.adaptTransfer(message);
+        case 'stop':
+          return this.adaptStop();
         default:
           throw new Error('Message of type ' + message.type + ' are not supported by this adapter.');
       }
@@ -259,14 +268,10 @@ var IadvizeAdapter = function (_WebAdapter) {
                     return message.type === 'transfer';
                   });
 
-
-                  console.log(transferMessageIndex);
-                  console.log(transferMessage);
-
                   // Handle failure now if transfer message is the first one
 
                   if (!(transferMessageIndex === 0)) {
-                    _context3.next = 22;
+                    _context3.next = 20;
                     break;
                   }
 
@@ -279,19 +284,19 @@ var IadvizeAdapter = function (_WebAdapter) {
                     failureMessage: transferMessage.payload.options.failureMessage
                   }));
 
-                case 22:
+                case 20:
                   if (!(transferMessageIndex > 0)) {
-                    _context3.next = 25;
+                    _context3.next = 23;
                     break;
                   }
 
-                  _context3.next = 25;
+                  _context3.next = 23;
                   return _this2.bot.brain.userSet(req.params.conversationId, 'transfer', {
                     await: transferMessage.payload.options.awaitDuration,
                     failureMessage: transferMessage.payload.options.failureMessage
                   });
 
-                case 25:
+                case 23:
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
@@ -301,7 +306,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 26:
+                case 24:
                 case 'end':
                   return _context3.stop();
               }

@@ -14,13 +14,18 @@
  * limitations under the License.
  */
 
-const { WebAdapter } = require('botfuel-dialog');
+const { WebAdapter, Logger } = require('botfuel-dialog');
+
+const DEFAULT_STOP_DELAY = 300; // 5min in second
+
+const logger = Logger('IadvizeAdapter');
 
 class IadvizeAdapter extends WebAdapter {
-  constructor(parameters) {
-    super(parameters);
-
+  constructor(bot) {
+    super(bot);
+    this.stopConversationDelay = this.computeStopConversationDelay(bot); // Should be in second
     this.adaptMessage = this.adaptMessage.bind(this);
+    this.buildBotReplies = this.buildBotReplies.bind(this);
   }
 
   adaptText(message) {
@@ -41,6 +46,12 @@ class IadvizeAdapter extends WebAdapter {
     };
   }
 
+  adaptStop() {
+    return {
+      type: 'stop',
+    };
+  }
+
   adaptQuickreplies(message) {
     return {
       type: 'message',
@@ -57,6 +68,7 @@ class IadvizeAdapter extends WebAdapter {
   }
 
   adaptMessage(message) {
+    logger.debug('adaptMessage', message);
     switch (message.type) {
       case 'text':
         return this.adaptText(message);
@@ -64,6 +76,8 @@ class IadvizeAdapter extends WebAdapter {
         return this.adaptQuickreplies(message);
       case 'transfer':
         return this.adaptTransfer(message);
+      case 'stop':
+        return this.adaptStop();
       default:
         throw new Error(
           `Message of type ${message.type} are not supported by this adapter.`
@@ -79,6 +93,7 @@ class IadvizeAdapter extends WebAdapter {
     awaitDuration,
     failureMessage,
   }) {
+    logger.debug('handleTransferFailure', transferMessage, idOperator, conversationId, awaitDuration, failureMessage);
     const failureHandlingMessage = [
       {
         type: 'await',
@@ -108,7 +123,38 @@ class IadvizeAdapter extends WebAdapter {
     });
   }
 
+  buildBotReplies(botMessages) {
+    logger.debug('buildBotReplies:botMessages', botMessages);
+    // Define await message using the delay
+    // defined in the configuration or as an environment variable
+    const awaitMessage = {
+      type: 'await',
+      duration: {
+        unit: 'seconds',
+        value: this.stopConversationDelay,
+      },
+    };
+    // Define the stop message
+    const stopMessage = {
+      type: 'stop',
+    };
+    const stopMessageIndex = botMessages.findIndex(m => m.type === stopMessage.type);
+    const replies = botMessages.map(this.adaptMessage);
+    // If a stop message is already in bot messages
+    // Then insert an await message just before the stop message
+    // Else push the await + stop messages at the end of bot messages
+    if (stopMessageIndex !== -1) {
+      replies.splice(stopMessageIndex, 0, awaitMessage);
+    } else {
+      replies.push(awaitMessage, stopMessage);
+    }
+
+    logger.debug('buildBotReplies:replies', replies);
+    return replies;
+  }
+
   createRoutes(app) {
+    logger.debug('createRoutes');
     // Conversation initialization. This is done when the first user message is sent
     // We don't do much here.
     app.post('/conversations', async (req, res) => {
@@ -221,7 +267,7 @@ class IadvizeAdapter extends WebAdapter {
       return res.send({
         idOperator: req.body.idOperator,
         idConversation: req.params.conversationId,
-        replies: botMessages.map(this.adaptMessage),
+        replies: this.buildBotReplies(botMessages),
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -239,6 +285,11 @@ class IadvizeAdapter extends WebAdapter {
         },
       ]);
     });
+  }
+
+  computeStopConversationDelay(bot) {
+    logger.debug('computeStopConversationDelay');
+    return process.env.STOP_CONVERSATION_DELAY || bot.config.adapter.stopConversationDelay || DEFAULT_STOP_DELAY;
   }
 }
 
