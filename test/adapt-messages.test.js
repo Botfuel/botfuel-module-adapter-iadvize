@@ -19,7 +19,13 @@ const IadvizeAdapter = require('../src/adapters/iadvize-adapter');
 const TEST_USER = 'TEST_USER';
 
 describe('adapting messages', () => {
-  const adapter = new IadvizeAdapter();
+  const adapter = new IadvizeAdapter({
+    config: {
+      adapter: {
+        closeConversationDelay: 100,
+      },
+    },
+  });
 
   test('should generate the proper text message json', () => {
     expect(
