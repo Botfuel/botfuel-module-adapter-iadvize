@@ -25,7 +25,7 @@ class IadvizeAdapter extends WebAdapter {
     super(bot);
     this.closeConversationDelay = this.computeCloseConversationDelay(bot); // Should be in second
     this.adaptMessage = this.adaptMessage.bind(this);
-    this.buildBotReplies = this.buildBotReplies.bind(this);
+    this.getCloseReplies = this.getCloseReplies.bind(this);
   }
 
   adaptText(message) {
@@ -123,34 +123,23 @@ class IadvizeAdapter extends WebAdapter {
     });
   }
 
-  buildBotReplies(botMessages) {
-    logger.debug('buildBotReplies:botMessages', botMessages);
-    // Define await message using the delay
-    // defined in the configuration or as an environment variable
-    const awaitMessage = {
-      type: 'await',
-      duration: {
-        unit: 'seconds',
-        value: this.closeConversationDelay,
+  getCloseReplies() {
+    logger.debug('getCloseReplies');
+    return [
+      // Await message using the delay
+      // defined in the configuration or as an environment variable
+      {
+        type: 'await',
+        duration: {
+          unit: 'seconds',
+          value: this.closeConversationDelay,
+        },
       },
-    };
-    // Define the close message
-    const closeMessage = {
-      type: 'close',
-    };
-    const closeMessageIndex = botMessages.findIndex(m => m.type === closeMessage.type);
-    const replies = botMessages.map(this.adaptMessage);
-    // If a stop message is already in bot messages
-    // Then insert an await message just before the stop message
-    // Else push the await + stop messages at the end of bot messages
-    if (closeMessageIndex !== -1) {
-      replies.splice(closeMessageIndex, 0, awaitMessage);
-    } else {
-      replies.push(awaitMessage, closeMessage);
-    }
-
-    logger.debug('buildBotReplies:replies', replies);
-    return replies;
+      // Close message
+      {
+        type: 'close',
+      },
+    ];
   }
 
   createRoutes(app) {
@@ -214,7 +203,7 @@ class IadvizeAdapter extends WebAdapter {
           return res.send({
             idOperator: req.body.idOperator,
             idConversation: req.params.conversationId,
-            replies: [],
+            replies: this.getCloseReplies(),
             variables: [],
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -267,7 +256,7 @@ class IadvizeAdapter extends WebAdapter {
       return res.send({
         idOperator: req.body.idOperator,
         idConversation: req.params.conversationId,
-        replies: this.buildBotReplies(botMessages),
+        replies: botMessages.map(this.adaptMessage),
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date(),
