@@ -44,7 +44,7 @@ var IadvizeAdapter = function (_WebAdapter) {
 
     _this.closeConversationDelay = _this.computeCloseConversationDelay(bot); // Should be in second
     _this.adaptMessage = _this.adaptMessage.bind(_this);
-    _this.buildBotReplies = _this.buildBotReplies.bind(_this);
+    _this.getCloseReplies = _this.getCloseReplies.bind(_this);
     return _this;
   }
 
@@ -145,37 +145,23 @@ var IadvizeAdapter = function (_WebAdapter) {
       });
     }
   }, {
-    key: 'buildBotReplies',
-    value: function buildBotReplies(botMessages) {
-      logger.debug('buildBotReplies:botMessages', botMessages);
-      // Define await message using the delay
+    key: 'getCloseReplies',
+    value: function getCloseReplies() {
+      logger.debug('getCloseReplies');
+      return [
+      // Await message using the delay
       // defined in the configuration or as an environment variable
-      var awaitMessage = {
+      {
         type: 'await',
         duration: {
           unit: 'seconds',
           value: this.closeConversationDelay
         }
-      };
-      // Define the close message
-      var closeMessage = {
+      },
+      // Close message
+      {
         type: 'close'
-      };
-      var closeMessageIndex = botMessages.findIndex(function (m) {
-        return m.type === closeMessage.type;
-      });
-      var replies = botMessages.map(this.adaptMessage);
-      // If a stop message is already in bot messages
-      // Then insert an await message just before the stop message
-      // Else push the await + stop messages at the end of bot messages
-      if (closeMessageIndex !== -1) {
-        replies.splice(closeMessageIndex, 0, awaitMessage);
-      } else {
-        replies.push(awaitMessage, closeMessage);
-      }
-
-      logger.debug('buildBotReplies:replies', replies);
-      return replies;
+      }];
     }
   }, {
     key: 'createRoutes',
@@ -286,7 +272,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
-                    replies: [],
+                    replies: _this2.getCloseReplies(),
                     variables: [],
                     createdAt: new Date(),
                     updatedAt: new Date()
@@ -343,7 +329,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   return _context3.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: req.params.conversationId,
-                    replies: _this2.buildBotReplies(botMessages),
+                    replies: botMessages.map(_this2.adaptMessage),
                     variables: [],
                     createdAt: new Date(),
                     updatedAt: new Date()
