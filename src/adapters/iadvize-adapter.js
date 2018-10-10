@@ -150,7 +150,6 @@ class IadvizeAdapter extends WebAdapter {
     }
 
     logger.debug('buildBotReplies:replies', replies);
-    console.log('BOT REPLIES', replies);
     return replies;
   }
 
