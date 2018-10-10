@@ -30,7 +30,7 @@ var _require = require('botfuel-dialog'),
     WebAdapter = _require.WebAdapter,
     Logger = _require.Logger;
 
-var DEFAULT_STOP_DELAY = 300; // 5min in second
+var DEFAULT_CLOSE_DELAY = 300; // 5min in second
 
 var logger = Logger('IadvizeAdapter');
 
@@ -42,7 +42,7 @@ var IadvizeAdapter = function (_WebAdapter) {
 
     var _this = _possibleConstructorReturn(this, (IadvizeAdapter.__proto__ || Object.getPrototypeOf(IadvizeAdapter)).call(this, bot));
 
-    _this.stopConversationDelay = _this.computeStopConversationDelay(bot); // Should be in second
+    _this.closeConversationDelay = _this.computeCloseConversationDelay(bot); // Should be in second
     _this.adaptMessage = _this.adaptMessage.bind(_this);
     _this.buildBotReplies = _this.buildBotReplies.bind(_this);
     return _this;
@@ -69,10 +69,10 @@ var IadvizeAdapter = function (_WebAdapter) {
       };
     }
   }, {
-    key: 'adaptStop',
-    value: function adaptStop() {
+    key: 'adaptClose',
+    value: function adaptClose() {
       return {
-        type: 'stop'
+        type: 'close'
       };
     }
   }, {
@@ -104,8 +104,8 @@ var IadvizeAdapter = function (_WebAdapter) {
           return this.adaptQuickreplies(message);
         case 'transfer':
           return this.adaptTransfer(message);
-        case 'stop':
-          return this.adaptStop();
+        case 'close':
+          return this.adaptClose();
         default:
           throw new Error('Message of type ' + message.type + ' are not supported by this adapter.');
       }
@@ -154,27 +154,28 @@ var IadvizeAdapter = function (_WebAdapter) {
         type: 'await',
         duration: {
           unit: 'seconds',
-          value: this.stopConversationDelay
+          value: this.closeConversationDelay
         }
       };
-      // Define the stop message
-      var stopMessage = {
-        type: 'stop'
+      // Define the close message
+      var closeMessage = {
+        type: 'close'
       };
-      var stopMessageIndex = botMessages.findIndex(function (m) {
-        return m.type === stopMessage.type;
+      var closeMessageIndex = botMessages.findIndex(function (m) {
+        return m.type === closeMessage.type;
       });
       var replies = botMessages.map(this.adaptMessage);
       // If a stop message is already in bot messages
       // Then insert an await message just before the stop message
       // Else push the await + stop messages at the end of bot messages
-      if (stopMessageIndex !== -1) {
-        replies.splice(stopMessageIndex, 0, awaitMessage);
+      if (closeMessageIndex !== -1) {
+        replies.splice(closeMessageIndex, 0, awaitMessage);
       } else {
-        replies.push(awaitMessage, stopMessage);
+        replies.push(awaitMessage, closeMessage);
       }
 
       logger.debug('buildBotReplies:replies', replies);
+      console.log('BOT REPLIES', replies);
       return replies;
     }
   }, {
@@ -373,10 +374,10 @@ var IadvizeAdapter = function (_WebAdapter) {
       });
     }
   }, {
-    key: 'computeStopConversationDelay',
-    value: function computeStopConversationDelay(bot) {
-      logger.debug('computeStopConversationDelay');
-      return process.env.STOP_CONVERSATION_DELAY || bot.config.adapter.stopConversationDelay || DEFAULT_STOP_DELAY;
+    key: 'computeCloseConversationDelay',
+    value: function computeCloseConversationDelay(bot) {
+      logger.debug('computeCloseConversationDelay');
+      return process.env.CLOSE_CONVERSATION_DELAY || bot.config.adapter.closeConversationDelay || DEFAULT_CLOSE_DELAY;
     }
   }]);
 

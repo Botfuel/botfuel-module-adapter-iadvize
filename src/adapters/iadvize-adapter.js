@@ -16,14 +16,14 @@
 
 const { WebAdapter, Logger } = require('botfuel-dialog');
 
-const DEFAULT_STOP_DELAY = 300; // 5min in second
+const DEFAULT_CLOSE_DELAY = 300; // 5min in second
 
 const logger = Logger('IadvizeAdapter');
 
 class IadvizeAdapter extends WebAdapter {
   constructor(bot) {
     super(bot);
-    this.stopConversationDelay = this.computeStopConversationDelay(bot); // Should be in second
+    this.closeConversationDelay = this.computeCloseConversationDelay(bot); // Should be in second
     this.adaptMessage = this.adaptMessage.bind(this);
     this.buildBotReplies = this.buildBotReplies.bind(this);
   }
@@ -46,9 +46,9 @@ class IadvizeAdapter extends WebAdapter {
     };
   }
 
-  adaptStop() {
+  adaptClose() {
     return {
-      type: 'stop',
+      type: 'close',
     };
   }
 
@@ -76,8 +76,8 @@ class IadvizeAdapter extends WebAdapter {
         return this.adaptQuickreplies(message);
       case 'transfer':
         return this.adaptTransfer(message);
-      case 'stop':
-        return this.adaptStop();
+      case 'close':
+        return this.adaptClose();
       default:
         throw new Error(
           `Message of type ${message.type} are not supported by this adapter.`
@@ -131,25 +131,26 @@ class IadvizeAdapter extends WebAdapter {
       type: 'await',
       duration: {
         unit: 'seconds',
-        value: this.stopConversationDelay,
+        value: this.closeConversationDelay,
       },
     };
-    // Define the stop message
-    const stopMessage = {
-      type: 'stop',
+    // Define the close message
+    const closeMessage = {
+      type: 'close',
     };
-    const stopMessageIndex = botMessages.findIndex(m => m.type === stopMessage.type);
+    const closeMessageIndex = botMessages.findIndex(m => m.type === closeMessage.type);
     const replies = botMessages.map(this.adaptMessage);
     // If a stop message is already in bot messages
     // Then insert an await message just before the stop message
     // Else push the await + stop messages at the end of bot messages
-    if (stopMessageIndex !== -1) {
-      replies.splice(stopMessageIndex, 0, awaitMessage);
+    if (closeMessageIndex !== -1) {
+      replies.splice(closeMessageIndex, 0, awaitMessage);
     } else {
-      replies.push(awaitMessage, stopMessage);
+      replies.push(awaitMessage, closeMessage);
     }
 
     logger.debug('buildBotReplies:replies', replies);
+    console.log('BOT REPLIES', replies);
     return replies;
   }
 
@@ -287,9 +288,9 @@ class IadvizeAdapter extends WebAdapter {
     });
   }
 
-  computeStopConversationDelay(bot) {
-    logger.debug('computeStopConversationDelay');
-    return process.env.STOP_CONVERSATION_DELAY || bot.config.adapter.stopConversationDelay || DEFAULT_STOP_DELAY;
+  computeCloseConversationDelay(bot) {
+    logger.debug('computeCloseConversationDelay');
+    return process.env.CLOSE_CONVERSATION_DELAY || bot.config.adapter.closeConversationDelay || DEFAULT_CLOSE_DELAY;
   }
 }
 

@@ -91,14 +91,14 @@ describe('adapting messages', () => {
     });
   });
 
-  test('should generate the proper stop message json', () => {
+  test('should generate the proper close message json', () => {
     expect(
       adapter.adaptMessage({
         id: 1,
         payload: null,
         sender: 'bot',
-        type: 'stop',
+        type: 'close',
       })
-    ).toEqual({ type: 'stop' });
+    ).toEqual({ type: 'close' });
   });
 });

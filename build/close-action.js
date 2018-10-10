@@ -10,13 +10,13 @@ var _require = require('botfuel-dialog'),
     Message = _require.Message;
 
 module.exports = function (_Message) {
-  _inherits(StopAction, _Message);
+  _inherits(CloseAction, _Message);
 
-  function StopAction() {
-    _classCallCheck(this, StopAction);
+  function CloseAction() {
+    _classCallCheck(this, CloseAction);
 
-    return _possibleConstructorReturn(this, (StopAction.__proto__ || Object.getPrototypeOf(StopAction)).call(this, 'stop', 'bot', null, {}));
+    return _possibleConstructorReturn(this, (CloseAction.__proto__ || Object.getPrototypeOf(CloseAction)).call(this, 'close', 'bot', null, {}));
   }
 
-  return StopAction;
+  return CloseAction;
 }(Message);
