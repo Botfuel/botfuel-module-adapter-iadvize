@@ -57,21 +57,21 @@ class TransferView extends View {
 ### Close event
 
 With this Adapter the close event is automatically triggered at the end of bot responses
-and the conversation is closed if any message is sent during the time before this event is triggered
-on iAdvize. You can't avoid this event but you can configure it to make it works the way you need.
+and the conversation is closed if no more messages are sent during the time before the close event is sent
+to iAdvize.
 
 #### Configuration
 
 You can configure 3 options in the config file of your for this event:
 - **closeWarningDelay** is the delay before the warning message will be sent
-- **closeWarningMessage** is the message that warn the user about the conversation closing
+- **closeWarningMessage** is the message that warn the user about the closing of the conversation
 - **closeDelay** is the delay after the warning message and before the close event is sent to iAdvize
 
-The **closeWarningDelay** and the **closeDelay** are duration in seconds, they have to be numbers, their default values are both **30 seconds**
+The **closeWarningDelay** and the **closeDelay** are durations in seconds, they have to be numbers, their default values are both **30 seconds**
 
 The **closeWarningMessage** can be either a string or a function that take the **closeDelay** in parameter so you can easily customize the message displayed.
 
-Example:
+The configuration of this event is made under the adapter key in the configuration file of the bot:
 
 ```js
 module.exports = {
