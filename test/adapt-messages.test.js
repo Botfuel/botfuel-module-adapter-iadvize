@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const IadvizeAdapter = require('../src/adapters/iadvize-adapter');
+const { IadvizeAdapter } = require('../src/adapters/iadvize-adapter');
 
 const TEST_USER = 'TEST_USER';
 
@@ -22,7 +22,7 @@ describe('adapting messages', () => {
   const adapter = new IadvizeAdapter({
     config: {
       adapter: {
-        closeConversationDelay: 100,
+        closeDelay: 100,
       },
     },
   });
@@ -114,8 +114,8 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({ config: { adapter: {} } });
     expect(adapter.closeSettings).toEqual({
       closeDelay: 30,
-      warningDelay: 30, // 300 * 0.9
-      warningMessage: 'The conversation will be closed in a few seconds',
+      closeWarningDelay: 30, // 300 * 0.9
+      closeWarningMessage: 'The conversation will be closed in a few seconds',
     });
   });
 
@@ -123,14 +123,14 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeConversationDelay: 100,
+          closeDelay: 100,
         },
       },
     });
     expect(adapter.closeSettings).toEqual({
       closeDelay: 100,
-      warningDelay: 30,
-      warningMessage: 'The conversation will be closed in a few seconds',
+      closeWarningDelay: 30,
+      closeWarningMessage: 'The conversation will be closed in a few seconds',
     });
   });
 
@@ -138,15 +138,15 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeConversationDelay: 100,
-          closeConversationWarningDelay: 80
+          closeDelay: 100,
+          closeWarningDelay: 80
         },
       },
     });
     expect(adapter.closeSettings).toEqual({
       closeDelay: 100,
-      warningDelay: 80,
-      warningMessage: 'The conversation will be closed in a few seconds',
+      closeWarningDelay: 80,
+      closeWarningMessage: 'The conversation will be closed in a few seconds',
     });
   });
 
@@ -154,16 +154,16 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeConversationDelay: 200,
-          closeConversationWarningDelay: 100,
-          closeConversationWarningMessage: 'This conversation will be closed soon ...',
+          closeDelay: 200,
+          closeWarningDelay: 100,
+          closeWarningMessage: 'This conversation will be closed soon ...',
         },
       },
     });
     expect(adapter.closeSettings).toEqual({
       closeDelay: 200,
-      warningDelay: 100,
-      warningMessage: 'This conversation will be closed soon ...',
+      closeWarningDelay: 100,
+      closeWarningMessage: 'This conversation will be closed soon ...',
     });
   });
 
@@ -171,16 +171,16 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeConversationDelay: 400,
-          closeConversationWarningDelay: 300,
-          closeConversationWarningMessage: (delay) => `The conversation will be closed in ${delay} seconds`,
+          closeDelay: 400,
+          closeWarningDelay: 300,
+          closeWarningMessage: (delay) => `The conversation will be closed in ${delay} seconds`,
         },
       },
     });
     expect(adapter.closeSettings).toEqual({
       closeDelay: 400,
-      warningDelay: 300,
-      warningMessage: 'The conversation will be closed in 400 seconds',
+      closeWarningDelay: 300,
+      closeWarningMessage: 'The conversation will be closed in 400 seconds',
     });
   });
 
@@ -188,14 +188,14 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeConversationDelay: "delay",
+          closeDelay: "delay",
         },
       },
     });
     expect(adapter.closeSettings).toEqual({
       closeDelay: 30,
-      warningDelay: 30,
-      warningMessage: 'The conversation will be closed in a few seconds',
+      closeWarningDelay: 30,
+      closeWarningMessage: 'The conversation will be closed in a few seconds',
     });
   });
 
@@ -203,15 +203,15 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeConversationDelay: "delay",
-          closeConversationWarningDelay: "warningDelay",
+          closeDelay: "delay",
+          closeWarningDelay: "closeWarningDelay",
         },
       },
     });
     expect(adapter.closeSettings).toEqual({
       closeDelay: 30,
-      warningDelay: 30,
-      warningMessage: 'The conversation will be closed in a few seconds',
+      closeWarningDelay: 30,
+      closeWarningMessage: 'The conversation will be closed in a few seconds',
     });
   });
 });
