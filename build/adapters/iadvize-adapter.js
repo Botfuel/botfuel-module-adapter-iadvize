@@ -30,7 +30,12 @@ var _require = require('botfuel-dialog'),
     WebAdapter = _require.WebAdapter,
     Logger = _require.Logger;
 
-var DEFAULT_CLOSE_DELAY = 300; // 5min in second
+var DEFAULT_CLOSE_DELAY = 30; // seconds
+var DEFAULT_CLOSE_WARNING_DELAY = 30; // seconds
+var DEFAULT_CLOSE_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
+
+var WARNING_STEP = 'WARNING';
+var CLOSE_STEP = 'CLOSE';
 
 var logger = Logger('IadvizeAdapter');
 
@@ -42,9 +47,9 @@ var IadvizeAdapter = function (_WebAdapter) {
 
     var _this = _possibleConstructorReturn(this, (IadvizeAdapter.__proto__ || Object.getPrototypeOf(IadvizeAdapter)).call(this, bot));
 
-    _this.closeConversationDelay = _this.computeCloseConversationDelay(bot); // Should be in second
+    _this.closeSettings = _this.getCloseConversationSettings(bot.config.adapter);
     _this.adaptMessage = _this.adaptMessage.bind(_this);
-    _this.getCloseReplies = _this.getCloseReplies.bind(_this);
+    _this.handleCloseConversation = _this.handleCloseConversation.bind(_this);
     return _this;
   }
 
@@ -58,6 +63,17 @@ var IadvizeAdapter = function (_WebAdapter) {
           value: message.payload.value
         },
         quickReplies: []
+      };
+    }
+  }, {
+    key: 'adaptAwait',
+    value: function adaptAwait(duration) {
+      return {
+        type: 'await',
+        duration: {
+          unit: 'seconds',
+          value: duration
+        }
       };
     }
   }, {
@@ -121,13 +137,7 @@ var IadvizeAdapter = function (_WebAdapter) {
           failureMessage = _ref.failureMessage;
 
       logger.debug('handleTransferFailure', transferMessage, idOperator, conversationId, awaitDuration, failureMessage);
-      var failureHandlingMessage = [{
-        type: 'await',
-        duration: {
-          unit: 'seconds',
-          value: awaitDuration
-        }
-      }, this.adaptText({
+      var failureHandlingMessage = [this.adaptAwait(awaitDuration), this.adaptText({
         payload: {
           value: failureMessage
         }
@@ -145,24 +155,89 @@ var IadvizeAdapter = function (_WebAdapter) {
       });
     }
   }, {
-    key: 'getCloseReplies',
-    value: function getCloseReplies() {
-      logger.debug('getCloseReplies');
-      return [
-      // Await message using the delay
-      // defined in the configuration or as an environment variable
-      {
-        type: 'await',
-        duration: {
-          unit: 'seconds',
-          value: this.closeConversationDelay
-        }
-      },
-      // Close message
-      {
-        type: 'close'
-      }];
-    }
+    key: 'handleCloseConversation',
+    value: function () {
+      var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(res, idOperator, conversationId) {
+        var close, replies;
+        return regeneratorRuntime.wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                _context.next = 2;
+                return this.bot.brain.userGet(conversationId, 'close');
+
+              case 2:
+                close = _context.sent;
+
+                console.log('HANDLE CLOSE', close);
+                replies = [];
+
+                if (!(close && close.step && close.step === WARNING_STEP)) {
+                  _context.next = 12;
+                  break;
+                }
+
+                console.log('HANDLE CLOSE WARNING');
+                // Set the next step which is close the conversation
+                _context.next = 9;
+                return this.bot.brain.userSet(conversationId, 'close', {
+                  step: CLOSE_STEP,
+                  closeDelay: close.closeDelay
+                });
+
+              case 9:
+                // Build replies that await and warn that the conversation will be closed
+                replies.push(this.adaptAwait(close.closeWarningDelay), this.adaptText({
+                  payload: {
+                    value: close.closeWarningMessage
+                  }
+                }));
+                _context.next = 17;
+                break;
+
+              case 12:
+                if (!(close && close.step && close.step === CLOSE_STEP)) {
+                  _context.next = 17;
+                  break;
+                }
+
+                console.log('HANDLE CLOSE CLOSE');
+                // Unset close conversation step
+                _context.next = 16;
+                return this.bot.brain.userSet(conversationId, 'close', null);
+
+              case 16:
+                // Build replies that await and close the conversation
+                replies.push(this.adaptAwait(close.closeDelay), this.adaptClose());
+
+              case 17:
+
+                console.log('HANDLE CLOSE replies', replies);
+
+                // Finally send replies to the user
+                return _context.abrupt('return', res.send({
+                  idOperator: idOperator,
+                  idConversation: conversationId,
+                  replies: replies,
+                  variables: [],
+                  createdAt: new Date(),
+                  updatedAt: new Date()
+                }));
+
+              case 19:
+              case 'end':
+                return _context.stop();
+            }
+          }
+        }, _callee, this);
+      }));
+
+      function handleCloseConversation(_x, _x2, _x3) {
+        return _ref2.apply(this, arguments);
+      }
+
+      return handleCloseConversation;
+    }()
   }, {
     key: 'createRoutes',
     value: function createRoutes(app) {
@@ -172,42 +247,14 @@ var IadvizeAdapter = function (_WebAdapter) {
       // Conversation initialization. This is done when the first user message is sent
       // We don't do much here.
       app.post('/conversations', function () {
-        var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(req, res) {
-          return regeneratorRuntime.wrap(function _callee$(_context) {
-            while (1) {
-              switch (_context.prev = _context.next) {
-                case 0:
-                  res.send({
-                    idOperator: req.body.idOperator,
-                    idConversation: req.body.idConversation,
-                    replies: [],
-                    variables: [],
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                  });
-
-                case 1:
-                case 'end':
-                  return _context.stop();
-              }
-            }
-          }, _callee, _this2);
-        }));
-
-        return function (_x, _x2) {
-          return _ref2.apply(this, arguments);
-        };
-      }());
-
-      app.get('/conversations/:conversationId', function () {
         var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(req, res) {
           return regeneratorRuntime.wrap(function _callee2$(_context2) {
             while (1) {
               switch (_context2.prev = _context2.next) {
                 case 0:
                   res.send({
-                    idConversation: req.params.conversationId,
-                    idOperator: req.query.idOperator,
+                    idOperator: req.body.idOperator,
+                    idConversation: req.body.idConversation,
                     replies: [],
                     variables: [],
                     createdAt: new Date(),
@@ -222,120 +269,27 @@ var IadvizeAdapter = function (_WebAdapter) {
           }, _callee2, _this2);
         }));
 
-        return function (_x3, _x4) {
+        return function (_x4, _x5) {
           return _ref3.apply(this, arguments);
         };
       }());
 
-      // Bot receives user messages AND bot (operator) messages on this endpoint.
-      // This endpoint should return a response containing the bot answers.
-      app.post('/conversations/:conversationId/messages', function () {
+      app.get('/conversations/:conversationId', function () {
         var _ref4 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3(req, res) {
-          var transferData, botMessages, transferMessageIndex, transferMessage;
           return regeneratorRuntime.wrap(function _callee3$(_context3) {
             while (1) {
               switch (_context3.prev = _context3.next) {
                 case 0:
-                  _context3.next = 2;
-                  return _this2.addUserIfNecessary(req.params.conversationId);
-
-                case 2:
-                  if (!(req.body.message.author.role === 'operator')) {
-                    _context3.next = 13;
-                    break;
-                  }
-
-                  _context3.next = 5;
-                  return _this2.bot.brain.userGet(req.params.conversationId, 'transfer');
-
-                case 5:
-                  transferData = _context3.sent;
-
-                  if (!transferData) {
-                    _context3.next = 12;
-                    break;
-                  }
-
-                  _context3.next = 9;
-                  return _this2.bot.brain.userSet(req.params.conversationId, 'transfer', null);
-
-                case 9:
-                  return _context3.abrupt('return', _this2.handleTransferFailure({
-                    res: res,
-                    idOperator: req.body.idOperator,
-                    conversationId: req.params.conversationId,
-                    awaitDuration: transferData.await,
-                    failureMessage: transferData.failureMessage
-                  }));
-
-                case 12:
-                  return _context3.abrupt('return', res.send({
-                    idOperator: req.body.idOperator,
+                  res.send({
                     idConversation: req.params.conversationId,
-                    replies: _this2.getCloseReplies(),
+                    idOperator: req.query.idOperator,
+                    replies: [],
                     variables: [],
                     createdAt: new Date(),
                     updatedAt: new Date()
-                  }));
-
-                case 13:
-                  _context3.next = 15;
-                  return _this2.bot.handleMessage(_this2.extendMessage({
-                    type: 'text',
-                    user: req.params.conversationId,
-                    payload: {
-                      value: req.body.message.payload.value
-                    }
-                  }));
-
-                case 15:
-                  botMessages = _context3.sent;
-                  transferMessageIndex = botMessages.findIndex(function (message) {
-                    return message.type === 'transfer';
-                  });
-                  transferMessage = botMessages.find(function (message) {
-                    return message.type === 'transfer';
                   });
 
-                  // Handle failure now if transfer message is the first one
-
-                  if (!(transferMessageIndex === 0)) {
-                    _context3.next = 20;
-                    break;
-                  }
-
-                  return _context3.abrupt('return', _this2.handleTransferFailure({
-                    res: res,
-                    transferMessage: botMessages.map(_this2.adaptMessage)[0],
-                    idOperator: req.body.idOperator,
-                    conversationId: req.params.conversationId,
-                    awaitDuration: transferMessage.payload.options.awaitDuration,
-                    failureMessage: transferMessage.payload.options.failureMessage
-                  }));
-
-                case 20:
-                  if (!(transferMessageIndex > 0)) {
-                    _context3.next = 23;
-                    break;
-                  }
-
-                  _context3.next = 23;
-                  return _this2.bot.brain.userSet(req.params.conversationId, 'transfer', {
-                    await: transferMessage.payload.options.awaitDuration,
-                    failureMessage: transferMessage.payload.options.failureMessage
-                  });
-
-                case 23:
-                  return _context3.abrupt('return', res.send({
-                    idOperator: req.body.idOperator,
-                    idConversation: req.params.conversationId,
-                    replies: botMessages.map(_this2.adaptMessage),
-                    variables: [],
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                  }));
-
-                case 24:
+                case 1:
                 case 'end':
                   return _context3.stop();
               }
@@ -343,8 +297,185 @@ var IadvizeAdapter = function (_WebAdapter) {
           }, _callee3, _this2);
         }));
 
-        return function (_x5, _x6) {
+        return function (_x6, _x7) {
           return _ref4.apply(this, arguments);
+        };
+      }());
+
+      // Bot receives user messages AND bot (operator) messages on this endpoint.
+      // This endpoint should return a response containing the bot answers.
+      app.post('/conversations/:conversationId/messages', function () {
+        var _ref5 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4(req, res) {
+          var conversationId, idOperator, transferData, botMessages, transferMessageIndex, transferMessage, closeMessageIndex, closeMessage, _closeMessage$payload, closeWarningDelay, closeWarningMessage, closeDelay, filteredMessages;
+
+          return regeneratorRuntime.wrap(function _callee4$(_context4) {
+            while (1) {
+              switch (_context4.prev = _context4.next) {
+                case 0:
+                  conversationId = req.params.conversationId;
+                  idOperator = req.body.idOperator;
+                  _context4.next = 4;
+                  return _this2.addUserIfNecessary(conversationId);
+
+                case 4:
+                  if (!(req.body.message.author.role === 'operator')) {
+                    _context4.next = 15;
+                    break;
+                  }
+
+                  _context4.next = 7;
+                  return _this2.bot.brain.userGet(conversationId, 'transfer');
+
+                case 7:
+                  transferData = _context4.sent;
+
+                  if (!transferData) {
+                    _context4.next = 14;
+                    break;
+                  }
+
+                  _context4.next = 11;
+                  return _this2.bot.brain.userSet(conversationId, 'transfer', null);
+
+                case 11:
+                  return _context4.abrupt('return', _this2.handleTransferFailure({
+                    res: res,
+                    idOperator: idOperator,
+                    conversationId: conversationId,
+                    awaitDuration: transferData.await,
+                    failureMessage: transferData.failureMessage
+                  }));
+
+                case 14:
+                  return _context4.abrupt('return', _this2.handleCloseConversation(res, idOperator, conversationId));
+
+                case 15:
+                  _context4.next = 17;
+                  return _this2.bot.handleMessage(_this2.extendMessage({
+                    type: 'text',
+                    user: conversationId,
+                    payload: {
+                      value: req.body.message.payload.value
+                    }
+                  }));
+
+                case 17:
+                  botMessages = _context4.sent;
+
+
+                  /**
+                   * Handling Transfer action from user
+                   */
+
+                  transferMessageIndex = botMessages.findIndex(function (m) {
+                    return m.type === 'transfer';
+                  });
+                  transferMessage = botMessages.find(function (m) {
+                    return m.type === 'transfer';
+                  });
+
+                  // Handle failure now if transfer message is the first one
+
+                  if (!(transferMessageIndex === 0)) {
+                    _context4.next = 22;
+                    break;
+                  }
+
+                  return _context4.abrupt('return', _this2.handleTransferFailure({
+                    res: res,
+                    transferMessage: botMessages.map(_this2.adaptMessage)[0],
+                    idOperator: req.body.idOperator,
+                    conversationId: conversationId,
+                    awaitDuration: transferMessage.payload.options.awaitDuration,
+                    failureMessage: transferMessage.payload.options.failureMessage
+                  }));
+
+                case 22:
+                  if (!(transferMessageIndex > 0)) {
+                    _context4.next = 25;
+                    break;
+                  }
+
+                  _context4.next = 25;
+                  return _this2.bot.brain.userSet(conversationId, 'transfer', {
+                    await: transferMessage.payload.options.awaitDuration,
+                    failureMessage: transferMessage.payload.options.failureMessage
+                  });
+
+                case 25:
+
+                  /**
+                   * Handling close action from user
+                   */
+
+                  // Look for close message in bot messages
+                  // Then Store close options in the brain if close message in the list
+                  // Else store adapter close options in the brain
+                  closeMessageIndex = botMessages.findIndex(function (m) {
+                    return m.type === 'close';
+                  });
+
+                  if (!(closeMessageIndex !== -1)) {
+                    _context4.next = 34;
+                    break;
+                  }
+
+                  closeMessage = botMessages.find(function (m) {
+                    return m.type === 'close';
+                  });
+
+                  console.log('close message', closeMessage);
+                  _closeMessage$payload = closeMessage.payload.options, closeWarningDelay = _closeMessage$payload.closeWarningDelay, closeWarningMessage = _closeMessage$payload.closeWarningMessage, closeDelay = _closeMessage$payload.closeDelay;
+                  _context4.next = 32;
+                  return _this2.bot.brain.userSet(conversationId, 'close', {
+                    step: WARNING_STEP,
+                    closeWarningDelay: closeWarningDelay,
+                    closeWarningMessage: typeof closeWarningMessage === 'function' ? closeWarningMessage(closeDelay) : closeWarningMessage,
+                    closeDelay: closeDelay
+                  });
+
+                case 32:
+                  _context4.next = 36;
+                  break;
+
+                case 34:
+                  _context4.next = 36;
+                  return _this2.bot.brain.userSet(conversationId, 'close', {
+                    step: WARNING_STEP,
+                    closeWarningDelay: _this2.closeSettings.closeWarningDelay,
+                    closeWarningMessage: _this2.closeSettings.closeWarningMessage,
+                    closeDelay: _this2.closeSettings.closeDelay
+                  });
+
+                case 36:
+
+                  // Normal case: reply bot messages to the user
+                  // Note: we filter close message to prevent other messages to be sent
+                  filteredMessages = botMessages.filter(function (m) {
+                    return m.type !== 'close';
+                  });
+
+                  console.log('BOT MESSAGES', botMessages);
+                  console.log('FILTERED MESSAGES', filteredMessages);
+                  return _context4.abrupt('return', res.send({
+                    idOperator: req.body.idOperator,
+                    idConversation: conversationId,
+                    replies: filteredMessages.map(_this2.adaptMessage),
+                    variables: [],
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                  }));
+
+                case 40:
+                case 'end':
+                  return _context4.stop();
+              }
+            }
+          }, _callee4, _this2);
+        }));
+
+        return function (_x8, _x9) {
+          return _ref5.apply(this, arguments);
         };
       }());
 
@@ -359,10 +490,39 @@ var IadvizeAdapter = function (_WebAdapter) {
       });
     }
   }, {
-    key: 'computeCloseConversationDelay',
-    value: function computeCloseConversationDelay(bot) {
-      logger.debug('computeCloseConversationDelay');
-      return process.env.CLOSE_CONVERSATION_DELAY || bot.config.adapter.closeConversationDelay || DEFAULT_CLOSE_DELAY;
+    key: 'getCloseConversationSettings',
+    value: function getCloseConversationSettings(params) {
+      logger.debug('computeCloseConversationDelay', params);
+      var closeWarningDelay = params.closeWarningDelay,
+          closeWarningMessage = params.closeWarningMessage,
+          closeDelay = params.closeDelay;
+
+      // This is the duration to await before the warning message will be displayed
+
+      var warningDelayValue = DEFAULT_CLOSE_WARNING_DELAY;
+      if (!isNaN(closeWarningDelay)) {
+        warningDelayValue = parseInt(closeWarningDelay, 10);
+      }
+
+      // This is the duration to await between the warning and the close action
+      // If there is no more interaction with the bot during this time
+      var closeDelayValue = DEFAULT_CLOSE_DELAY;
+      if (!isNaN(closeDelay)) {
+        closeDelayValue = parseInt(closeDelay, 10);
+      }
+
+      // This is the close warning message displayed before the conversation will be closed
+      // Can be a String or a Function that take the close conversation delay
+      var warningMessageValue = DEFAULT_CLOSE_WARNING_MESSAGE;
+      if (closeWarningMessage) {
+        warningMessageValue = typeof closeWarningMessage === 'function' ? closeWarningMessage(closeDelay) : closeWarningMessage;
+      }
+
+      return {
+        closeWarningDelay: warningDelayValue,
+        closeWarningMessage: warningMessageValue,
+        closeDelay: closeDelayValue
+      };
     }
   }]);
 

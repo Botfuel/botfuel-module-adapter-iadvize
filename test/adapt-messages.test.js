@@ -108,3 +108,110 @@ describe('adapting messages', () => {
     ).toEqual({ type: 'close' });
   });
 });
+
+describe('Close settings', () => {
+  test('should generate the proper close settings when no configuration provided', () => {
+    const adapter = new IadvizeAdapter({ config: { adapter: {} } });
+    expect(adapter.closeSettings).toEqual({
+      closeDelay: 30,
+      warningDelay: 30, // 300 * 0.9
+      warningMessage: 'The conversation will be closed in a few seconds',
+    });
+  });
+
+  test('should generate the proper close settings when close conversation settings provided', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {
+          closeConversationDelay: 100,
+        },
+      },
+    });
+    expect(adapter.closeSettings).toEqual({
+      closeDelay: 100,
+      warningDelay: 30,
+      warningMessage: 'The conversation will be closed in a few seconds',
+    });
+  });
+
+  test('should generate the proper close settings when close conversation settings provided (2)', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {
+          closeConversationDelay: 100,
+          closeConversationWarningDelay: 80
+        },
+      },
+    });
+    expect(adapter.closeSettings).toEqual({
+      closeDelay: 100,
+      warningDelay: 80,
+      warningMessage: 'The conversation will be closed in a few seconds',
+    });
+  });
+
+  test('should generate the proper close settings when close conversation settings provided (3)', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {
+          closeConversationDelay: 200,
+          closeConversationWarningDelay: 100,
+          closeConversationWarningMessage: 'This conversation will be closed soon ...',
+        },
+      },
+    });
+    expect(adapter.closeSettings).toEqual({
+      closeDelay: 200,
+      warningDelay: 100,
+      warningMessage: 'This conversation will be closed soon ...',
+    });
+  });
+
+  test('should generate the proper close settings when close conversation settings provided (4)', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {
+          closeConversationDelay: 400,
+          closeConversationWarningDelay: 300,
+          closeConversationWarningMessage: (delay) => `The conversation will be closed in ${delay} seconds`,
+        },
+      },
+    });
+    expect(adapter.closeSettings).toEqual({
+      closeDelay: 400,
+      warningDelay: 300,
+      warningMessage: 'The conversation will be closed in 400 seconds',
+    });
+  });
+
+  test('should generate the proper close settings when the close conversation delay provided is not a number', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {
+          closeConversationDelay: "delay",
+        },
+      },
+    });
+    expect(adapter.closeSettings).toEqual({
+      closeDelay: 30,
+      warningDelay: 30,
+      warningMessage: 'The conversation will be closed in a few seconds',
+    });
+  });
+
+  test('should generate the proper close settings when the close settings delay provided are not numbers', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {
+          closeConversationDelay: "delay",
+          closeConversationWarningDelay: "warningDelay",
+        },
+      },
+    });
+    expect(adapter.closeSettings).toEqual({
+      closeDelay: 30,
+      warningDelay: 30,
+      warningMessage: 'The conversation will be closed in a few seconds',
+    });
+  });
+});
