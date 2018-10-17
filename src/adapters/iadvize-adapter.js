@@ -17,8 +17,8 @@
 const { WebAdapter, Logger } = require('botfuel-dialog');
 
 const DEFAULT_CLOSE_DELAY = 30; // seconds
-const DEFAULT_CLOSE_WARNING_DELAY = 30; // seconds
-const DEFAULT_CLOSE_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
+const DEFAULT_WARNING_DELAY = 30; // seconds
+const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
 
 const WARNING_STEP = 'WARNING';
 const CLOSE_STEP = 'CLOSE';
@@ -134,36 +134,33 @@ class IadvizeAdapter extends WebAdapter {
 
   async handleCloseConversation(res, idOperator, conversationId) {
     const close = await this.bot.brain.userGet(conversationId, 'close');
-    console.log('HANDLE CLOSE', close);
     const replies = [];
-    if (close && close.step && close.step === WARNING_STEP) {
-      console.log('HANDLE CLOSE WARNING');
-      // Set the next step which is close the conversation
-      await this.bot.brain.userSet(conversationId, 'close', {
-        step: CLOSE_STEP,
-        closeDelay: close.closeDelay,
-      });
-      // Build replies that await and warn that the conversation will be closed
-      replies.push(
-        this.adaptAwait(close.closeWarningDelay),
-        this.adaptText({
-          payload: {
-            value: close.closeWarningMessage,
-          },
-        }),
-      );
-    } else if (close && close.step && close.step === CLOSE_STEP) {
-      console.log('HANDLE CLOSE CLOSE');
-      // Unset close conversation step
-      await this.bot.brain.userSet(conversationId, 'close', null);
-      // Build replies that await and close the conversation
-      replies.push(
-        this.adaptAwait(close.closeDelay),
-        this.adaptClose(),
-      );
+    if (close && close.step) {
+      if (close.step === WARNING_STEP) {
+        // Set the next step which is close the conversation
+        await this.bot.brain.userSet(conversationId, 'close', {
+          step: CLOSE_STEP,
+          closeDelay: close.closeDelay,
+        });
+        // Build replies that await and warn that the conversation will be closed
+        replies.push(
+          this.adaptAwait(close.closeWarningDelay),
+          this.adaptText({
+            payload: {
+              value: close.closeWarningMessage,
+            },
+          }),
+        );
+      } else if (close.step === CLOSE_STEP) {
+        // Unset close conversation step
+        await this.bot.brain.userSet(conversationId, 'close', null);
+        // Build replies that await and close the conversation
+        replies.push(
+          this.adaptAwait(close.closeDelay),
+          this.adaptClose(),
+        );
+      }
     }
-
-    console.log('HANDLE CLOSE replies', replies);
 
     // Finally send replies to the user
     return res.send({
@@ -282,7 +279,6 @@ class IadvizeAdapter extends WebAdapter {
       const closeMessageIndex = botMessages.findIndex(m => m.type === 'close');
       if (closeMessageIndex !== -1) {
         const closeMessage = botMessages.find(m => m.type === 'close');
-        console.log('close message', closeMessage);
         const { closeWarningDelay, closeWarningMessage, closeDelay } = closeMessage.payload.options;
         await this.bot.brain.userSet(conversationId, 'close', {
           step: WARNING_STEP,
@@ -304,8 +300,6 @@ class IadvizeAdapter extends WebAdapter {
       // Normal case: reply bot messages to the user
       // Note: we filter close message to prevent other messages to be sent
       const filteredMessages = botMessages.filter(m => m.type !== 'close');
-      console.log('BOT MESSAGES', botMessages);
-      console.log('FILTERED MESSAGES', filteredMessages);
       return res.send({
         idOperator: req.body.idOperator,
         idConversation: conversationId,
@@ -338,7 +332,7 @@ class IadvizeAdapter extends WebAdapter {
     } = params;
 
     // This is the duration to await before the warning message will be displayed
-    let warningDelayValue = DEFAULT_CLOSE_WARNING_DELAY;
+    let warningDelayValue = DEFAULT_WARNING_DELAY;
     if (!isNaN(closeWarningDelay)) {
       warningDelayValue = parseInt(closeWarningDelay, 10);
     }
@@ -352,7 +346,7 @@ class IadvizeAdapter extends WebAdapter {
 
     // This is the close warning message displayed before the conversation will be closed
     // Can be a String or a Function that take the close conversation delay
-    let warningMessageValue = DEFAULT_CLOSE_WARNING_MESSAGE;
+    let warningMessageValue = DEFAULT_WARNING_MESSAGE;
     if (closeWarningMessage) {
       warningMessageValue = typeof closeWarningMessage === 'function'
         ? closeWarningMessage(closeDelay)
@@ -367,4 +361,9 @@ class IadvizeAdapter extends WebAdapter {
   }
 }
 
-module.exports = IadvizeAdapter;
+module.exports = {
+  IadvizeAdapter,
+  DEFAULT_WARNING_DELAY,
+  DEFAULT_WARNING_MESSAGE,
+  DEFAULT_CLOSE_DELAY,
+};
