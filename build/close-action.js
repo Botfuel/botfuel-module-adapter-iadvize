@@ -9,16 +9,21 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var _require = require('botfuel-dialog'),
     Message = _require.Message;
 
+var _require2 = require('./adapters/iadvize-adapter'),
+    DEFAULT_WARNING_DELAY = _require2.DEFAULT_WARNING_DELAY,
+    DEFAULT_WARNING_MESSAGE = _require2.DEFAULT_WARNING_MESSAGE,
+    DEFAULT_CLOSE_DELAY = _require2.DEFAULT_CLOSE_DELAY;
+
 module.exports = function (_Message) {
   _inherits(CloseAction, _Message);
 
   function CloseAction(_ref) {
     var _ref$closeWarningDela = _ref.closeWarningDelay,
-        closeWarningDelay = _ref$closeWarningDela === undefined ? 30 : _ref$closeWarningDela,
+        closeWarningDelay = _ref$closeWarningDela === undefined ? DEFAULT_WARNING_DELAY : _ref$closeWarningDela,
         _ref$closeWarningMess = _ref.closeWarningMessage,
-        closeWarningMessage = _ref$closeWarningMess === undefined ? 'The conversation will be closed in a few seconds' : _ref$closeWarningMess,
+        closeWarningMessage = _ref$closeWarningMess === undefined ? DEFAULT_WARNING_MESSAGE : _ref$closeWarningMess,
         _ref$closeDelay = _ref.closeDelay,
-        closeDelay = _ref$closeDelay === undefined ? 30 : _ref$closeDelay;
+        closeDelay = _ref$closeDelay === undefined ? DEFAULT_CLOSE_DELAY : _ref$closeDelay;
 
     _classCallCheck(this, CloseAction);
 
