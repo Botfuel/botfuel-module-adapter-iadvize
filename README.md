@@ -54,9 +54,49 @@ class TransferView extends View {
 }
 ```
 
-### Close action
+### Close event
 
-To close the conversation on iAdvize side, include a `CloseAction` in the messages returned by your view:
+With this Adapter the close event is automatically triggered at the end of bot responses
+and the conversation is closed if no more messages are sent during the time before the close event is sent
+to iAdvize.
+
+#### Configuration
+
+You can configure 3 options in the config file of your for this event:
+- **closeWarningDelay** is the delay before the warning message will be sent
+- **closeWarningMessage** is the message that warn the user about the closing of the conversation
+- **closeDelay** is the delay after the warning message and before the close event is sent to iAdvize
+
+The **closeWarningDelay** and the **closeDelay** are durations in seconds, they have to be numbers, their default values are both **30 seconds**
+
+The **closeWarningMessage** can be either a string or a function that take the **closeDelay** in parameter so you can easily customize the message displayed.
+
+The configuration of this event is made under the adapter key in the configuration file of the bot:
+
+```js
+module.exports = {
+  adapter: {
+    name: 'iadvize',
+    closeWarningDelay: 30,
+    closeWarningMessage: (delay) => `The conversation will be closed in ${delay} seconds`,
+    closeDelay: 120,
+  },
+  modules: ['botfuel-module-adapter-iadvize'],
+};
+```
+
+In this example, the user will receive the message
+"The conversation will be closed in 120 seconds" after 30 seconds of inactivity,
+and the conversation will be closed 120 seconds after the warning message
+if there is still no news messages from the user or the bot.
+
+#### CloseAction
+
+The CloseAction work the same way as the close event described below,
+it takes the same parameters as in the bot configuration
+but in that case you will configure and trigger the close event through a view.
+
+To use it, include a `CloseAction` in the messages returned by your view:
 
 ```js
 const { View } = require('botfuel-dialog');
@@ -66,31 +106,23 @@ class TransferView extends View {
   render() {
     return [
       new BotTextMessage('I’m going to close this conversation.'),
-      new CloseAction(),
+      new CloseAction({
+        closeWarningDelay: 10,
+        closeWarningMessage: (delay) => `The conversation will be closed in ${delay} seconds`,
+        closeDelay: 10,
+      }),
     ];
   }
 }
 ```
 
-The conversation will be closed after a delay where the bot didn't answered anything.
+In this example, the user will receive the message
+"The conversation will be closed in 10 seconds" after 10 seconds of inactivity,
+and the conversation will be closed 10 seconds after the warning message
+if there is still no news messages from the user or the bot.
 
-#### Close action delay
+#### Default values
 
-The default value of this delay is **5 min** (300 seconds) but it is configurable.
-
-There is two way to configure it, using the bot **configuration** or an **environment variable**.
-The environment variable will have the priority over the configuration.
-
-If you want to configure it in the configuration of your bot you can define a key `closeConversationDelay` in the configuration file, under the adapter key:
-
-```js
-module.exports = {
-  adapter: {
-    name: 'iadvize',
-    closeConversationDelay: 300, // the value should be in seconds
-  },
-  modules: ['botfuel-module-adapter-iadvize'],
-};
-```
-
-If you want to use an environment variable you can define the `CLOSE_CONVERSATION_DELAY` environment variable.
+- **closeWarningDelay**: 30 seconds
+- **closeWarningMessage**: "The conversation will be closed in a few seconds"
+- **closeDelay**: 30 seconds

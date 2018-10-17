@@ -12,10 +12,21 @@ var _require = require('botfuel-dialog'),
 module.exports = function (_Message) {
   _inherits(CloseAction, _Message);
 
-  function CloseAction() {
+  function CloseAction(_ref) {
+    var _ref$closeWarningDela = _ref.closeWarningDelay,
+        closeWarningDelay = _ref$closeWarningDela === undefined ? 30 : _ref$closeWarningDela,
+        _ref$closeWarningMess = _ref.closeWarningMessage,
+        closeWarningMessage = _ref$closeWarningMess === undefined ? 'The conversation will be closed in a few seconds' : _ref$closeWarningMess,
+        _ref$closeDelay = _ref.closeDelay,
+        closeDelay = _ref$closeDelay === undefined ? 30 : _ref$closeDelay;
+
     _classCallCheck(this, CloseAction);
 
-    return _possibleConstructorReturn(this, (CloseAction.__proto__ || Object.getPrototypeOf(CloseAction)).call(this, 'close', 'bot', null, {}));
+    return _possibleConstructorReturn(this, (CloseAction.__proto__ || Object.getPrototypeOf(CloseAction)).call(this, 'close', 'bot', null, {
+      closeWarningDelay: closeWarningDelay,
+      closeWarningMessage: closeWarningMessage,
+      closeDelay: closeDelay
+    }));
   }
 
   return CloseAction;
