@@ -244,34 +244,6 @@ class IadvizeAdapter extends WebAdapter {
       );
 
       /**
-       * Handling Transfer action from user
-       */
-
-      const transferMessageIndex = botMessages.findIndex(m => m.type === 'transfer');
-      const transferMessage = botMessages.find(m => m.type === 'transfer');
-
-      // Handle failure now if transfer message is the first one
-      if (transferMessageIndex === 0) {
-        return this.handleTransferFailure({
-          res,
-          transferMessage: botMessages.map(this.adaptMessage)[0],
-          idOperator: req.body.idOperator,
-          conversationId: conversationId,
-          awaitDuration: transferMessage.payload.options.awaitDuration,
-          failureMessage: transferMessage.payload.options.failureMessage,
-        });
-      }
-
-      // If botMessages contains a transfer message and it's not the first message, save in the brain
-      // the fact that we have to handle transfer message failure on next bot message
-      if (transferMessageIndex > 0) {
-        await this.bot.brain.userSet(conversationId, 'transfer', {
-          await: transferMessage.payload.options.awaitDuration,
-          failureMessage: transferMessage.payload.options.failureMessage,
-        });
-      }
-
-      /**
        * Handling close action from user
        */
 
@@ -296,6 +268,34 @@ class IadvizeAdapter extends WebAdapter {
           closeWarningDelay: this.closeSettings.closeWarningDelay,
           closeWarningMessage: this.closeSettings.closeWarningMessage,
           closeDelay: this.closeSettings.closeDelay,
+        });
+      }
+
+      /**
+       * Handling Transfer action from user
+       */
+
+      const transferMessageIndex = botMessages.findIndex(m => m.type === 'transfer');
+      const transferMessage = botMessages.find(m => m.type === 'transfer');
+
+      // Handle failure now if transfer message is the first one
+      if (transferMessageIndex === 0) {
+        return this.handleTransferFailure({
+          res,
+          transferMessage: botMessages.map(this.adaptMessage)[0],
+          idOperator: req.body.idOperator,
+          conversationId: conversationId,
+          awaitDuration: transferMessage.payload.options.awaitDuration,
+          failureMessage: transferMessage.payload.options.failureMessage,
+        });
+      }
+
+      // If botMessages contains a transfer message and it's not the first message, save in the brain
+      // the fact that we have to handle transfer message failure on next bot message
+      if (transferMessageIndex > 0) {
+        await this.bot.brain.userSet(conversationId, 'transfer', {
+          await: transferMessage.payload.options.awaitDuration,
+          failureMessage: transferMessage.payload.options.failureMessage,
         });
       }
 

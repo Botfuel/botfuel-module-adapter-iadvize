@@ -306,7 +306,7 @@ var IadvizeAdapter = function (_WebAdapter) {
       // This endpoint should return a response containing the bot answers.
       app.post('/conversations/:conversationId/messages', function () {
         var _ref5 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4(req, res) {
-          var conversationId, idOperator, transferData, botMessages, transferMessageIndex, transferMessage, closeMessageIndex, closeMessage, _closeMessage$payload, closeWarningDelay, closeWarningMessage, closeDelay, filteredMessages;
+          var conversationId, idOperator, transferData, botMessages, closeMessageIndex, closeMessage, _closeMessage$payload, closeWarningDelay, closeWarningMessage, closeDelay, transferMessageIndex, transferMessage, filteredMessages;
 
           return regeneratorRuntime.wrap(function _callee4$(_context4) {
             while (1) {
@@ -364,6 +364,49 @@ var IadvizeAdapter = function (_WebAdapter) {
 
 
                   /**
+                   * Handling close action from user
+                   */
+
+                  // Look for close message in bot messages
+                  // Then Store close options in the brain if close message in the list
+                  // Else store adapter close options in the brain
+                  closeMessageIndex = botMessages.findIndex(function (m) {
+                    return m.type === 'close';
+                  });
+
+                  if (!(closeMessageIndex !== -1)) {
+                    _context4.next = 26;
+                    break;
+                  }
+
+                  closeMessage = botMessages.find(function (m) {
+                    return m.type === 'close';
+                  });
+                  _closeMessage$payload = closeMessage.payload.options, closeWarningDelay = _closeMessage$payload.closeWarningDelay, closeWarningMessage = _closeMessage$payload.closeWarningMessage, closeDelay = _closeMessage$payload.closeDelay;
+                  _context4.next = 24;
+                  return _this2.bot.brain.userSet(conversationId, 'close', {
+                    step: WARNING_STEP,
+                    closeWarningDelay: closeWarningDelay,
+                    closeWarningMessage: typeof closeWarningMessage === 'function' ? closeWarningMessage(closeDelay) : closeWarningMessage,
+                    closeDelay: closeDelay
+                  });
+
+                case 24:
+                  _context4.next = 28;
+                  break;
+
+                case 26:
+                  _context4.next = 28;
+                  return _this2.bot.brain.userSet(conversationId, 'close', {
+                    step: WARNING_STEP,
+                    closeWarningDelay: _this2.closeSettings.closeWarningDelay,
+                    closeWarningMessage: _this2.closeSettings.closeWarningMessage,
+                    closeDelay: _this2.closeSettings.closeDelay
+                  });
+
+                case 28:
+
+                  /**
                    * Handling Transfer action from user
                    */
 
@@ -377,7 +420,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   // Handle failure now if transfer message is the first one
 
                   if (!(transferMessageIndex === 0)) {
-                    _context4.next = 22;
+                    _context4.next = 32;
                     break;
                   }
 
@@ -390,59 +433,16 @@ var IadvizeAdapter = function (_WebAdapter) {
                     failureMessage: transferMessage.payload.options.failureMessage
                   }));
 
-                case 22:
+                case 32:
                   if (!(transferMessageIndex > 0)) {
-                    _context4.next = 25;
+                    _context4.next = 35;
                     break;
                   }
 
-                  _context4.next = 25;
+                  _context4.next = 35;
                   return _this2.bot.brain.userSet(conversationId, 'transfer', {
                     await: transferMessage.payload.options.awaitDuration,
                     failureMessage: transferMessage.payload.options.failureMessage
-                  });
-
-                case 25:
-
-                  /**
-                   * Handling close action from user
-                   */
-
-                  // Look for close message in bot messages
-                  // Then Store close options in the brain if close message in the list
-                  // Else store adapter close options in the brain
-                  closeMessageIndex = botMessages.findIndex(function (m) {
-                    return m.type === 'close';
-                  });
-
-                  if (!(closeMessageIndex !== -1)) {
-                    _context4.next = 33;
-                    break;
-                  }
-
-                  closeMessage = botMessages.find(function (m) {
-                    return m.type === 'close';
-                  });
-                  _closeMessage$payload = closeMessage.payload.options, closeWarningDelay = _closeMessage$payload.closeWarningDelay, closeWarningMessage = _closeMessage$payload.closeWarningMessage, closeDelay = _closeMessage$payload.closeDelay;
-                  _context4.next = 31;
-                  return _this2.bot.brain.userSet(conversationId, 'close', {
-                    step: WARNING_STEP,
-                    closeWarningDelay: closeWarningDelay,
-                    closeWarningMessage: typeof closeWarningMessage === 'function' ? closeWarningMessage(closeDelay) : closeWarningMessage,
-                    closeDelay: closeDelay
-                  });
-
-                case 31:
-                  _context4.next = 35;
-                  break;
-
-                case 33:
-                  _context4.next = 35;
-                  return _this2.bot.brain.userSet(conversationId, 'close', {
-                    step: WARNING_STEP,
-                    closeWarningDelay: _this2.closeSettings.closeWarningDelay,
-                    closeWarningMessage: _this2.closeSettings.closeWarningMessage,
-                    closeDelay: _this2.closeSettings.closeDelay
                   });
 
                 case 35:
