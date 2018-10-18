@@ -109,6 +109,7 @@ class IadvizeAdapter extends WebAdapter {
     failureMessage,
   }) {
     logger.debug('handleTransferFailure', transferMessage, idOperator, conversationId, awaitDuration, failureMessage);
+    // @TODO update this method to try for each distributionRuleIds provided by the req.body.operator
     const failureHandlingMessage = [
       this.adaptAwait(awaitDuration),
       this.adaptText({
@@ -203,11 +204,11 @@ class IadvizeAdapter extends WebAdapter {
     // This endpoint should return a response containing the bot answers.
     app.post('/conversations/:conversationId/messages', async (req, res) => {
       const { conversationId } = req.params;
-      const { idOperator } = req.body;
+      const { idOperator, message } = req.body;
       await this.addUserIfNecessary(conversationId);
 
       // Operator messages are sent to this endpoint too, like visitor messages
-      if (req.body.message.author.role === 'operator') {
+      if (message.author.role === 'operator') {
         const transferData = await this.bot.brain.userGet(conversationId, 'transfer');
 
         // If transfer data was saved from the previous step, it means bot has started a transfer
@@ -253,7 +254,7 @@ class IadvizeAdapter extends WebAdapter {
         return this.handleTransferFailure({
           res,
           transferMessage: botMessages.map(this.adaptMessage)[0],
-          idOperator: req.body.idOperator,
+          idOperator,
           conversationId: conversationId,
           awaitDuration: transferMessage.payload.options.awaitDuration,
           failureMessage: transferMessage.payload.options.failureMessage,
@@ -301,7 +302,7 @@ class IadvizeAdapter extends WebAdapter {
       // Note: we filter close message to prevent other messages to be sent
       const filteredMessages = botMessages.filter(m => m.type !== 'close');
       return res.send({
-        idOperator: req.body.idOperator,
+        idOperator,
         idConversation: conversationId,
         replies: filteredMessages.map(this.adaptMessage),
         variables: [],
