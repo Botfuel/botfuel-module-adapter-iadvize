@@ -134,6 +134,7 @@ class IadvizeAdapter extends WebAdapter {
 
   async handleCloseConversation(res, idOperator, conversationId) {
     const close = await this.bot.brain.userGet(conversationId, 'close');
+    logger.debug('handleCloseConversation', idOperator, conversationId, close);
     const replies = [];
     if (close && close.step) {
       if (close.step === WARNING_STEP) {
@@ -162,6 +163,7 @@ class IadvizeAdapter extends WebAdapter {
       }
     }
 
+    logger.debug('handleCloseConversation: replies', replies);
     // Finally send replies to the user
     return res.send({
       idOperator: idOperator,
@@ -300,6 +302,8 @@ class IadvizeAdapter extends WebAdapter {
       // Normal case: reply bot messages to the user
       // Note: we filter close message to prevent other messages to be sent
       const filteredMessages = botMessages.filter(m => m.type !== 'close');
+      logger.debug('botMessages to send', filteredMessages);
+
       return res.send({
         idOperator: req.body.idOperator,
         idConversation: conversationId,
