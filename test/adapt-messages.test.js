@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const { IadvizeAdapter } = require('../src/adapters/iadvize-adapter');
+const IadvizeAdapter = require('../src/adapters/iadvize-adapter');
 
 const TEST_USER = 'TEST_USER';
 
