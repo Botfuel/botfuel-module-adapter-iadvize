@@ -168,48 +168,53 @@ var IadvizeAdapter = function (_WebAdapter) {
 
               case 2:
                 close = _context.sent;
+
+                logger.debug('handleCloseConversation', idOperator, conversationId, close);
                 replies = [];
 
                 if (!(close && close.step)) {
-                  _context.next = 15;
+                  _context.next = 16;
                   break;
                 }
 
                 if (!(close.step === WARNING_STEP)) {
-                  _context.next = 11;
+                  _context.next = 12;
                   break;
                 }
 
-                _context.next = 8;
+                _context.next = 9;
                 return this.bot.brain.userSet(conversationId, 'close', {
                   step: CLOSE_STEP,
                   closeDelay: close.closeDelay
                 });
 
-              case 8:
+              case 9:
                 // Build replies that await and warn that the conversation will be closed
                 replies.push(this.adaptAwait(close.closeWarningDelay), this.adaptText({
                   payload: {
                     value: close.closeWarningMessage
                   }
                 }));
-                _context.next = 15;
+                _context.next = 16;
                 break;
 
-              case 11:
+              case 12:
                 if (!(close.step === CLOSE_STEP)) {
-                  _context.next = 15;
+                  _context.next = 16;
                   break;
                 }
 
-                _context.next = 14;
+                _context.next = 15;
                 return this.bot.brain.userSet(conversationId, 'close', null);
 
-              case 14:
+              case 15:
                 // Build replies that await and close the conversation
                 replies.push(this.adaptAwait(close.closeDelay), this.adaptClose());
 
-              case 15:
+              case 16:
+
+                logger.debug('handleCloseConversation: replies', replies);
+                // Finally send replies to the user
                 return _context.abrupt('return', res.send({
                   idOperator: idOperator,
                   idConversation: conversationId,
@@ -219,7 +224,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   updatedAt: new Date()
                 }));
 
-              case 16:
+              case 18:
               case 'end':
                 return _context.stop();
             }
@@ -447,6 +452,9 @@ var IadvizeAdapter = function (_WebAdapter) {
                   filteredMessages = botMessages.filter(function (m) {
                     return m.type !== 'close';
                   });
+
+                  logger.debug('botMessages to send', filteredMessages);
+
                   return _context4.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: conversationId,
@@ -456,7 +464,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 37:
+                case 38:
                 case 'end':
                   return _context4.stop();
               }
