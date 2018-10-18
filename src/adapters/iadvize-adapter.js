@@ -361,9 +361,4 @@ class IadvizeAdapter extends WebAdapter {
   }
 }
 
-module.exports = {
-  IadvizeAdapter,
-  DEFAULT_WARNING_DELAY,
-  DEFAULT_WARNING_MESSAGE,
-  DEFAULT_CLOSE_DELAY,
-};
+module.exports = IadvizeAdapter;

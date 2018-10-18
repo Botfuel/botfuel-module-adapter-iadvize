@@ -519,9 +519,4 @@ var IadvizeAdapter = function (_WebAdapter) {
   return IadvizeAdapter;
 }(WebAdapter);
 
-module.exports = {
-  IadvizeAdapter: IadvizeAdapter,
-  DEFAULT_WARNING_DELAY: DEFAULT_WARNING_DELAY,
-  DEFAULT_WARNING_MESSAGE: DEFAULT_WARNING_MESSAGE,
-  DEFAULT_CLOSE_DELAY: DEFAULT_CLOSE_DELAY
-};
+module.exports = IadvizeAdapter;
