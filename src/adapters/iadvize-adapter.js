@@ -55,11 +55,7 @@ class IadvizeAdapter extends WebAdapter {
     // Step 4: If no rules worked then send the failure message
     const failureHandlingMessage = [
       adaptAwait(awaitDuration),
-      adaptText({
-        payload: {
-          value: failureMessage,
-        },
-      }),
+      adaptText(failureMessage),
     ];
 
     const replies = !!transferMessage
@@ -90,11 +86,7 @@ class IadvizeAdapter extends WebAdapter {
         // Build replies that await and warn that the conversation will be closed
         replies.push(
           adaptAwait(close.closeWarningDelay),
-          adaptText({
-            payload: {
-              value: close.closeWarningMessage,
-            },
-          }),
+          adaptText(close.closeWarningMessage),
         );
       } else if (close.step === CLOSE_STEP) {
         // Unset close conversation step

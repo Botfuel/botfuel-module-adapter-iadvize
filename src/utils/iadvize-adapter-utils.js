@@ -11,15 +11,15 @@ const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few second
 
 /**
  * Adapt text message to iAdvize platform format
- * @param message
+ * @param text
  * @returns {{type: string, payload: {contentType: string, value: (string|*|null|string[])}, quickReplies: Array}}
  */
-const adaptText = (message) => {
+const adaptText = (text) => {
   return {
     type: 'message',
     payload: {
       contentType: 'text',
-      value: message.payload.value,
+      value: text,
     },
     quickReplies: [],
   };
@@ -91,7 +91,7 @@ const adaptMessage = (message) => {
   logger.debug('adaptMessage', message);
   switch (message.type) {
     case 'text':
-      return adaptText(message);
+      return adaptText(message.payload.value);
     case 'quickreplies':
       return adaptQuickreplies(message);
     case 'transfer':
