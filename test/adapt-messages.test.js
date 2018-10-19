@@ -14,22 +14,13 @@
  * limitations under the License.
  */
 
-const { IadvizeAdapter } = require('../src/adapters/iadvize-adapter');
-
-const TEST_USER = 'TEST_USER';
+const IadvizeAdapter = require('../src/adapters/iadvize-adapter');
+const { adaptMessage } = require('../src/utils/iadvize-adapter-utils');
 
 describe('adapting messages', () => {
-  const adapter = new IadvizeAdapter({
-    config: {
-      adapter: {
-        closeDelay: 100,
-      },
-    },
-  });
-
   test('should generate the proper text message json', () => {
     expect(
-      adapter.adaptMessage({
+      adaptMessage({
         id: 1,
         payload: {
           value: 'Hello bot',
@@ -49,7 +40,7 @@ describe('adapting messages', () => {
 
   test('should generate the proper quickreplies message json', () => {
     expect(
-      adapter.adaptMessage({
+      adaptMessage({
         id: 1,
         payload: {
           value: ['yes', 'no'],
@@ -80,7 +71,7 @@ describe('adapting messages', () => {
 
   test('should generate the proper transfer message json', () => {
     expect(
-      adapter.adaptMessage({
+      adaptMessage({
         id: 1,
         payload: {
           value: null,
@@ -99,7 +90,7 @@ describe('adapting messages', () => {
 
   test('should generate the proper close message json', () => {
     expect(
-      adapter.adaptMessage({
+      adaptMessage({
         id: 1,
         payload: null,
         sender: 'bot',

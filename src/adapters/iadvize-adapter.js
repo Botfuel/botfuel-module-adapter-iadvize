@@ -15,10 +15,14 @@
  */
 
 const { WebAdapter, Logger } = require('botfuel-dialog');
-
-const DEFAULT_CLOSE_DELAY = 30; // seconds
-const DEFAULT_WARNING_DELAY = 30; // seconds
-const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
+const {
+  adaptText,
+  adaptAwait,
+  adaptClose,
+  adaptMessage,
+  getCloseConversationSettings,
+  getOperatorTransferRules,
+} = require('../utils/iadvize-adapter-utils');
 
 const WARNING_STEP = 'WARNING';
 const CLOSE_STEP = 'CLOSE';
@@ -28,91 +32,30 @@ const logger = Logger('IadvizeAdapter');
 class IadvizeAdapter extends WebAdapter {
   constructor(bot) {
     super(bot);
-    this.closeSettings = this.getCloseConversationSettings(bot.config.adapter);
-    this.adaptMessage = this.adaptMessage.bind(this);
+    this.closeSettings = getCloseConversationSettings(bot.config.adapter);
     this.handleCloseConversation = this.handleCloseConversation.bind(this);
   }
 
-  adaptText(message) {
-    return {
-      type: 'message',
-      payload: {
-        contentType: 'text',
-        value: message.payload.value,
-      },
-      quickReplies: [],
-    };
-  }
-
-  adaptAwait(duration) {
-    return {
-      type: 'await',
-      duration: {
-        unit: 'seconds',
-        value: duration,
-      },
-    }
-  }
-
-  adaptTransfer(message) {
-    return {
-      type: 'transfer',
-      distributionRule: message.payload.options.distributionRuleId,
-    };
-  }
-
-  adaptClose() {
-    return {
-      type: 'close',
-    };
-  }
-
-  adaptQuickreplies(message) {
-    return {
-      type: 'message',
-      payload: {
-        contentType: 'text',
-        value: '',
-      },
-      quickReplies: message.payload.value.map(quickreply => ({
-        contentType: 'text/quick-reply',
-        value: quickreply,
-        idQuickReply: quickreply,
-      })),
-    };
-  }
-
-  adaptMessage(message) {
-    logger.debug('adaptMessage', message);
-    switch (message.type) {
-      case 'text':
-        return this.adaptText(message);
-      case 'quickreplies':
-        return this.adaptQuickreplies(message);
-      case 'transfer':
-        return this.adaptTransfer(message);
-      case 'close':
-        return this.adaptClose();
-      default:
-        throw new Error(
-          `Message of type ${message.type} are not supported by this adapter.`
-        );
-    }
-  }
-
-  handleTransferFailure({
+  handleTransfer({
     res,
-    transferMessage,
     idOperator,
+    operator,
+    transferMessage,
     conversationId,
     awaitDuration,
     failureMessage,
   }) {
-    logger.debug('handleTransferFailure', transferMessage, idOperator, conversationId, awaitDuration, failureMessage);
-    // @TODO update this method to try for each distributionRuleIds provided by the req.body.operator
+    logger.debug('handleTransfer', idOperator, operator, transferMessage, conversationId, awaitDuration, failureMessage);
+    // @TODO try each distributionRuleIds provided by the operator
+    // Step 1: filter operator distributionRules to remove rules that are not in availabilityStrategy.distributionRulesToCheck
+    const operatorTransferRules = getOperatorTransferRules(operator);
+    logger.debug('handleTransfer: operatorTransferRules', operatorTransferRules);
+    // Step 2: store these rules in bot brain for the transfer process
+    // Step 3: Try for each rules to transfer
+    // Step 4: If no rules worked then send the failure message
     const failureHandlingMessage = [
-      this.adaptAwait(awaitDuration),
-      this.adaptText({
+      adaptAwait(awaitDuration),
+      adaptText({
         payload: {
           value: failureMessage,
         },
@@ -135,6 +78,7 @@ class IadvizeAdapter extends WebAdapter {
 
   async handleCloseConversation(res, idOperator, conversationId) {
     const close = await this.bot.brain.userGet(conversationId, 'close');
+    logger.debug('handleCloseConversation', idOperator, conversationId, close);
     const replies = [];
     if (close && close.step) {
       if (close.step === WARNING_STEP) {
@@ -145,8 +89,8 @@ class IadvizeAdapter extends WebAdapter {
         });
         // Build replies that await and warn that the conversation will be closed
         replies.push(
-          this.adaptAwait(close.closeWarningDelay),
-          this.adaptText({
+          adaptAwait(close.closeWarningDelay),
+          adaptText({
             payload: {
               value: close.closeWarningMessage,
             },
@@ -157,12 +101,13 @@ class IadvizeAdapter extends WebAdapter {
         await this.bot.brain.userSet(conversationId, 'close', null);
         // Build replies that await and close the conversation
         replies.push(
-          this.adaptAwait(close.closeDelay),
-          this.adaptClose(),
+          adaptAwait(close.closeDelay),
+          adaptClose(),
         );
       }
     }
 
+    logger.debug('handleCloseConversation: replies', replies);
     // Finally send replies to the user
     return res.send({
       idOperator: idOperator,
@@ -204,8 +149,10 @@ class IadvizeAdapter extends WebAdapter {
     // This endpoint should return a response containing the bot answers.
     app.post('/conversations/:conversationId/messages', async (req, res) => {
       const { conversationId } = req.params;
-      const { idOperator, message } = req.body;
+      const { idOperator, message, operator } = req.body;
       await this.addUserIfNecessary(conversationId);
+
+      logger.debug('Operator', operator);
 
       // Operator messages are sent to this endpoint too, like visitor messages
       if (message.author.role === 'operator') {
@@ -218,7 +165,7 @@ class IadvizeAdapter extends WebAdapter {
         // from the bot, so do not send any reply
         if (transferData) {
           await this.bot.brain.userSet(conversationId, 'transfer', null);
-          return this.handleTransferFailure({
+          return this.handleTransfer({
             res,
             idOperator,
             conversationId: conversationId,
@@ -241,34 +188,6 @@ class IadvizeAdapter extends WebAdapter {
           },
         })
       );
-
-      /**
-       * Handling Transfer action from user
-       */
-
-      const transferMessageIndex = botMessages.findIndex(m => m.type === 'transfer');
-      const transferMessage = botMessages.find(m => m.type === 'transfer');
-
-      // Handle failure now if transfer message is the first one
-      if (transferMessageIndex === 0) {
-        return this.handleTransferFailure({
-          res,
-          transferMessage: botMessages.map(this.adaptMessage)[0],
-          idOperator,
-          conversationId: conversationId,
-          awaitDuration: transferMessage.payload.options.awaitDuration,
-          failureMessage: transferMessage.payload.options.failureMessage,
-        });
-      }
-
-      // If botMessages contains a transfer message and it's not the first message, save in the brain
-      // the fact that we have to handle transfer message failure on next bot message
-      if (transferMessageIndex > 0) {
-        await this.bot.brain.userSet(conversationId, 'transfer', {
-          await: transferMessage.payload.options.awaitDuration,
-          failureMessage: transferMessage.payload.options.failureMessage,
-        });
-      }
 
       /**
        * Handling close action from user
@@ -298,13 +217,43 @@ class IadvizeAdapter extends WebAdapter {
         });
       }
 
+      /**
+       * Handling Transfer action from user
+       */
+
+      const transferMessageIndex = botMessages.findIndex(m => m.type === 'transfer');
+      const transferMessage = botMessages.find(m => m.type === 'transfer');
+
+      // Handle failure now if transfer message is the first one
+      if (transferMessageIndex === 0) {
+        return this.handleTransfer({
+          res,
+          transferMessage: botMessages.map(adaptMessage)[0],
+          idOperator: req.body.idOperator,
+          conversationId: conversationId,
+          awaitDuration: transferMessage.payload.options.awaitDuration,
+          failureMessage: transferMessage.payload.options.failureMessage,
+        });
+      }
+
+      // If botMessages contains a transfer message and it's not the first message, save in the brain
+      // the fact that we have to handle transfer message failure on next bot message
+      if (transferMessageIndex > 0) {
+        await this.bot.brain.userSet(conversationId, 'transfer', {
+          await: transferMessage.payload.options.awaitDuration,
+          failureMessage: transferMessage.payload.options.failureMessage,
+        });
+      }
+
       // Normal case: reply bot messages to the user
       // Note: we filter close message to prevent other messages to be sent
       const filteredMessages = botMessages.filter(m => m.type !== 'close');
+      logger.debug('botMessages to send', filteredMessages);
+
       return res.send({
         idOperator,
         idConversation: conversationId,
-        replies: filteredMessages.map(this.adaptMessage),
+        replies: filteredMessages.map(adaptMessage),
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -323,48 +272,6 @@ class IadvizeAdapter extends WebAdapter {
       ]);
     });
   }
-
-  getCloseConversationSettings(params) {
-    logger.debug('computeCloseConversationDelay', params);
-    const {
-      closeWarningDelay,
-      closeWarningMessage,
-      closeDelay,
-    } = params;
-
-    // This is the duration to await before the warning message will be displayed
-    let warningDelayValue = DEFAULT_WARNING_DELAY;
-    if (!isNaN(closeWarningDelay)) {
-      warningDelayValue = parseInt(closeWarningDelay, 10);
-    }
-
-    // This is the duration to await between the warning and the close action
-    // If there is no more interaction with the bot during this time
-    let closeDelayValue = DEFAULT_CLOSE_DELAY;
-    if (!isNaN(closeDelay)) {
-      closeDelayValue = parseInt(closeDelay, 10);
-    }
-
-    // This is the close warning message displayed before the conversation will be closed
-    // Can be a String or a Function that take the close conversation delay
-    let warningMessageValue = DEFAULT_WARNING_MESSAGE;
-    if (closeWarningMessage) {
-      warningMessageValue = typeof closeWarningMessage === 'function'
-        ? closeWarningMessage(closeDelay)
-        : closeWarningMessage;
-    }
-
-    return {
-      closeWarningDelay: warningDelayValue,
-      closeWarningMessage: warningMessageValue,
-      closeDelay: closeDelayValue,
-    };
-  }
 }
 
-module.exports = {
-  IadvizeAdapter,
-  DEFAULT_WARNING_DELAY,
-  DEFAULT_WARNING_MESSAGE,
-  DEFAULT_CLOSE_DELAY,
-};
+module.exports = IadvizeAdapter;

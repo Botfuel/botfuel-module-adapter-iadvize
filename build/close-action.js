@@ -9,10 +9,9 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var _require = require('botfuel-dialog'),
     Message = _require.Message;
 
-var _require2 = require('./adapters/iadvize-adapter'),
-    DEFAULT_WARNING_DELAY = _require2.DEFAULT_WARNING_DELAY,
-    DEFAULT_WARNING_MESSAGE = _require2.DEFAULT_WARNING_MESSAGE,
-    DEFAULT_CLOSE_DELAY = _require2.DEFAULT_CLOSE_DELAY;
+var DEFAULT_CLOSE_DELAY = 30; // seconds
+var DEFAULT_WARNING_DELAY = 30; // seconds
+var DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
 
 module.exports = function (_Message) {
   _inherits(CloseAction, _Message);

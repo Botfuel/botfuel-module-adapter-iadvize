@@ -168,48 +168,53 @@ var IadvizeAdapter = function (_WebAdapter) {
 
               case 2:
                 close = _context.sent;
+
+                logger.debug('handleCloseConversation', idOperator, conversationId, close);
                 replies = [];
 
                 if (!(close && close.step)) {
-                  _context.next = 15;
+                  _context.next = 16;
                   break;
                 }
 
                 if (!(close.step === WARNING_STEP)) {
-                  _context.next = 11;
+                  _context.next = 12;
                   break;
                 }
 
-                _context.next = 8;
+                _context.next = 9;
                 return this.bot.brain.userSet(conversationId, 'close', {
                   step: CLOSE_STEP,
                   closeDelay: close.closeDelay
                 });
 
-              case 8:
+              case 9:
                 // Build replies that await and warn that the conversation will be closed
                 replies.push(this.adaptAwait(close.closeWarningDelay), this.adaptText({
                   payload: {
                     value: close.closeWarningMessage
                   }
                 }));
-                _context.next = 15;
+                _context.next = 16;
                 break;
 
-              case 11:
+              case 12:
                 if (!(close.step === CLOSE_STEP)) {
-                  _context.next = 15;
+                  _context.next = 16;
                   break;
                 }
 
-                _context.next = 14;
+                _context.next = 15;
                 return this.bot.brain.userSet(conversationId, 'close', null);
 
-              case 14:
+              case 15:
                 // Build replies that await and close the conversation
                 replies.push(this.adaptAwait(close.closeDelay), this.adaptClose());
 
-              case 15:
+              case 16:
+
+                logger.debug('handleCloseConversation: replies', replies);
+                // Finally send replies to the user
                 return _context.abrupt('return', res.send({
                   idOperator: idOperator,
                   idConversation: conversationId,
@@ -219,7 +224,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   updatedAt: new Date()
                 }));
 
-              case 16:
+              case 18:
               case 'end':
                 return _context.stop();
             }
@@ -301,7 +306,7 @@ var IadvizeAdapter = function (_WebAdapter) {
       // This endpoint should return a response containing the bot answers.
       app.post('/conversations/:conversationId/messages', function () {
         var _ref5 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4(req, res) {
-          var conversationId, idOperator, transferData, botMessages, transferMessageIndex, transferMessage, closeMessageIndex, closeMessage, _closeMessage$payload, closeWarningDelay, closeWarningMessage, closeDelay, filteredMessages;
+          var conversationId, idOperator, transferData, botMessages, closeMessageIndex, closeMessage, _closeMessage$payload, closeWarningDelay, closeWarningMessage, closeDelay, transferMessageIndex, transferMessage, filteredMessages;
 
           return regeneratorRuntime.wrap(function _callee4$(_context4) {
             while (1) {
@@ -359,6 +364,49 @@ var IadvizeAdapter = function (_WebAdapter) {
 
 
                   /**
+                   * Handling close action from user
+                   */
+
+                  // Look for close message in bot messages
+                  // Then Store close options in the brain if close message in the list
+                  // Else store adapter close options in the brain
+                  closeMessageIndex = botMessages.findIndex(function (m) {
+                    return m.type === 'close';
+                  });
+
+                  if (!(closeMessageIndex !== -1)) {
+                    _context4.next = 26;
+                    break;
+                  }
+
+                  closeMessage = botMessages.find(function (m) {
+                    return m.type === 'close';
+                  });
+                  _closeMessage$payload = closeMessage.payload.options, closeWarningDelay = _closeMessage$payload.closeWarningDelay, closeWarningMessage = _closeMessage$payload.closeWarningMessage, closeDelay = _closeMessage$payload.closeDelay;
+                  _context4.next = 24;
+                  return _this2.bot.brain.userSet(conversationId, 'close', {
+                    step: WARNING_STEP,
+                    closeWarningDelay: closeWarningDelay,
+                    closeWarningMessage: typeof closeWarningMessage === 'function' ? closeWarningMessage(closeDelay) : closeWarningMessage,
+                    closeDelay: closeDelay
+                  });
+
+                case 24:
+                  _context4.next = 28;
+                  break;
+
+                case 26:
+                  _context4.next = 28;
+                  return _this2.bot.brain.userSet(conversationId, 'close', {
+                    step: WARNING_STEP,
+                    closeWarningDelay: _this2.closeSettings.closeWarningDelay,
+                    closeWarningMessage: _this2.closeSettings.closeWarningMessage,
+                    closeDelay: _this2.closeSettings.closeDelay
+                  });
+
+                case 28:
+
+                  /**
                    * Handling Transfer action from user
                    */
 
@@ -372,7 +420,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   // Handle failure now if transfer message is the first one
 
                   if (!(transferMessageIndex === 0)) {
-                    _context4.next = 22;
+                    _context4.next = 32;
                     break;
                   }
 
@@ -385,59 +433,16 @@ var IadvizeAdapter = function (_WebAdapter) {
                     failureMessage: transferMessage.payload.options.failureMessage
                   }));
 
-                case 22:
+                case 32:
                   if (!(transferMessageIndex > 0)) {
-                    _context4.next = 25;
+                    _context4.next = 35;
                     break;
                   }
 
-                  _context4.next = 25;
+                  _context4.next = 35;
                   return _this2.bot.brain.userSet(conversationId, 'transfer', {
                     await: transferMessage.payload.options.awaitDuration,
                     failureMessage: transferMessage.payload.options.failureMessage
-                  });
-
-                case 25:
-
-                  /**
-                   * Handling close action from user
-                   */
-
-                  // Look for close message in bot messages
-                  // Then Store close options in the brain if close message in the list
-                  // Else store adapter close options in the brain
-                  closeMessageIndex = botMessages.findIndex(function (m) {
-                    return m.type === 'close';
-                  });
-
-                  if (!(closeMessageIndex !== -1)) {
-                    _context4.next = 33;
-                    break;
-                  }
-
-                  closeMessage = botMessages.find(function (m) {
-                    return m.type === 'close';
-                  });
-                  _closeMessage$payload = closeMessage.payload.options, closeWarningDelay = _closeMessage$payload.closeWarningDelay, closeWarningMessage = _closeMessage$payload.closeWarningMessage, closeDelay = _closeMessage$payload.closeDelay;
-                  _context4.next = 31;
-                  return _this2.bot.brain.userSet(conversationId, 'close', {
-                    step: WARNING_STEP,
-                    closeWarningDelay: closeWarningDelay,
-                    closeWarningMessage: typeof closeWarningMessage === 'function' ? closeWarningMessage(closeDelay) : closeWarningMessage,
-                    closeDelay: closeDelay
-                  });
-
-                case 31:
-                  _context4.next = 35;
-                  break;
-
-                case 33:
-                  _context4.next = 35;
-                  return _this2.bot.brain.userSet(conversationId, 'close', {
-                    step: WARNING_STEP,
-                    closeWarningDelay: _this2.closeSettings.closeWarningDelay,
-                    closeWarningMessage: _this2.closeSettings.closeWarningMessage,
-                    closeDelay: _this2.closeSettings.closeDelay
                   });
 
                 case 35:
@@ -447,6 +452,9 @@ var IadvizeAdapter = function (_WebAdapter) {
                   filteredMessages = botMessages.filter(function (m) {
                     return m.type !== 'close';
                   });
+
+                  logger.debug('botMessages to send', filteredMessages);
+
                   return _context4.abrupt('return', res.send({
                     idOperator: req.body.idOperator,
                     idConversation: conversationId,
@@ -456,7 +464,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 37:
+                case 38:
                 case 'end':
                   return _context4.stop();
               }
@@ -519,9 +527,4 @@ var IadvizeAdapter = function (_WebAdapter) {
   return IadvizeAdapter;
 }(WebAdapter);
 
-module.exports = {
-  IadvizeAdapter: IadvizeAdapter,
-  DEFAULT_WARNING_DELAY: DEFAULT_WARNING_DELAY,
-  DEFAULT_WARNING_MESSAGE: DEFAULT_WARNING_MESSAGE,
-  DEFAULT_CLOSE_DELAY: DEFAULT_CLOSE_DELAY
-};
+module.exports = IadvizeAdapter;
