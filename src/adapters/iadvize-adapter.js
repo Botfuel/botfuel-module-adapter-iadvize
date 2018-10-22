@@ -15,115 +15,85 @@
  */
 
 const { WebAdapter, Logger } = require('botfuel-dialog');
-
-const DEFAULT_CLOSE_DELAY = 30; // seconds
-const DEFAULT_WARNING_DELAY = 30; // seconds
-const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
+const {
+  adaptText,
+  adaptTransfer,
+  adaptAwait,
+  adaptClose,
+  adaptMessage,
+  getCloseConversationSettings,
+  getOperatorTransferRules,
+} = require('../utils/iadvize-adapter-utils');
 
 const WARNING_STEP = 'WARNING';
 const CLOSE_STEP = 'CLOSE';
+
+const betweenTransferErrorMessage = [
+  'Un spécialiste va vous répondre dans quelques instants...',
+  'Un de nos experts se libère et va vous répondre...',
+  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
+  'Un spécialiste va vous répondre dans quelques instants...',
+  'Un de nos experts se libère et va vous répondre...',
+  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
+  'Un spécialiste va vous répondre dans quelques instants...',
+  'Un de nos experts se libère et va vous répondre...',
+  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
+];
+
+const getRandomElement = (list) => {
+  return list[Math.floor(Math.random() * Math.floor(list.length))];
+};
 
 const logger = Logger('IadvizeAdapter');
 
 class IadvizeAdapter extends WebAdapter {
   constructor(bot) {
     super(bot);
-    this.closeSettings = this.getCloseConversationSettings(bot.config.adapter);
-    this.adaptMessage = this.adaptMessage.bind(this);
+    this.closeSettings = getCloseConversationSettings(bot.config.adapter);
+    this.handleTransfer = this.handleTransfer.bind(this);
     this.handleCloseConversation = this.handleCloseConversation.bind(this);
   }
 
-  adaptText(message) {
-    return {
-      type: 'message',
-      payload: {
-        contentType: 'text',
-        value: message.payload.value,
-      },
-      quickReplies: [],
-    };
-  }
+  async handleTransfer(res, conversationId, idOperator, operator) {
+    const { awaitDuration, failureMessage, distributionRules } = await this.bot.brain.userGet(conversationId, 'transfer');
+    logger.debug('handleTransfer: params', conversationId, idOperator, operator);
+    console.log('handleTransfer: params', conversationId, idOperator, operator);
+    logger.debug('handleTransfer: brain params', awaitDuration, failureMessage, distributionRules);
+    console.log('handleTransfer: brain params', awaitDuration, failureMessage, distributionRules);
 
-  adaptAwait(duration) {
-    return {
-      type: 'await',
-      duration: {
-        unit: 'seconds',
-        value: duration,
-      },
+    const replies = [];
+    // Handle transfer failure if there is no distributionRuleId to transfer to
+    if (!distributionRules || distributionRules.length === 0) {
+      // Then add awaitDuration and failure message to replies
+      replies.push(
+        adaptAwait(awaitDuration),
+        adaptText(failureMessage),
+      );
+      // Unset transfer data
+      await this.bot.brain.userSet(conversationId, 'transfer', null);
+    } else {
+      // Take the first element from distribution rule ids (and remove it from the rule ids)
+      const distributionRule = distributionRules.shift();
+      console.log('handleTransfer: rule to transfer', distributionRule);
+      console.log('handleTransfer: rules left', distributionRules);
+      replies.push(
+        adaptTransfer(distributionRule.id),
+        adaptAwait(10),
+        adaptText(getRandomElement(betweenTransferErrorMessage)),
+      );
+      console.log('Some transfer rules to handle', replies);
+      await this.bot.brain.userSet(conversationId, 'transfer', {
+        awaitDuration,
+        failureMessage,
+        distributionRules,
+      });
     }
-  }
 
-  adaptTransfer(message) {
-    return {
-      type: 'transfer',
-      distributionRule: message.payload.options.distributionRuleId,
-    };
-  }
-
-  adaptClose() {
-    return {
-      type: 'close',
-    };
-  }
-
-  adaptQuickreplies(message) {
-    return {
-      type: 'message',
-      payload: {
-        contentType: 'text',
-        value: '',
-      },
-      quickReplies: message.payload.value.map(quickreply => ({
-        contentType: 'text/quick-reply',
-        value: quickreply,
-        idQuickReply: quickreply,
-      })),
-    };
-  }
-
-  adaptMessage(message) {
-    logger.debug('adaptMessage', message);
-    switch (message.type) {
-      case 'text':
-        return this.adaptText(message);
-      case 'quickreplies':
-        return this.adaptQuickreplies(message);
-      case 'transfer':
-        return this.adaptTransfer(message);
-      case 'close':
-        return this.adaptClose();
-      default:
-        throw new Error(
-          `Message of type ${message.type} are not supported by this adapter.`
-        );
-    }
-  }
-
-  handleTransferFailure({
-    res,
-    transferMessage,
-    idOperator,
-    conversationId,
-    awaitDuration,
-    failureMessage,
-  }) {
-    logger.debug('handleTransferFailure', transferMessage, idOperator, conversationId, awaitDuration, failureMessage);
-    const failureHandlingMessage = [
-      this.adaptAwait(awaitDuration),
-      this.adaptText({
-        payload: {
-          value: failureMessage,
-        },
-      }),
-    ];
-
-    const replies = !!transferMessage
-      ? [transferMessage, ...failureHandlingMessage]
-      : failureHandlingMessage;
+    logger.debug('handleTransfer: replies', replies);
+    console.log('handleTransfer: replies', replies);
 
     return res.send({
-      idOperator: idOperator,
+      idOperator,
       idConversation: conversationId,
       replies,
       variables: [],
@@ -145,20 +115,16 @@ class IadvizeAdapter extends WebAdapter {
         });
         // Build replies that await and warn that the conversation will be closed
         replies.push(
-          this.adaptAwait(close.closeWarningDelay),
-          this.adaptText({
-            payload: {
-              value: close.closeWarningMessage,
-            },
-          }),
+          adaptAwait(close.closeWarningDelay),
+          adaptText(close.closeWarningMessage),
         );
       } else if (close.step === CLOSE_STEP) {
         // Unset close conversation step
         await this.bot.brain.userSet(conversationId, 'close', null);
         // Build replies that await and close the conversation
         replies.push(
-          this.adaptAwait(close.closeDelay),
-          this.adaptClose(),
+          adaptAwait(close.closeDelay),
+          adaptClose(),
         );
       }
     }
@@ -166,9 +132,9 @@ class IadvizeAdapter extends WebAdapter {
     logger.debug('handleCloseConversation: replies', replies);
     // Finally send replies to the user
     return res.send({
-      idOperator: idOperator,
+      idOperator,
       idConversation: conversationId,
-      replies: replies,
+      replies,
       variables: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -205,28 +171,26 @@ class IadvizeAdapter extends WebAdapter {
     // This endpoint should return a response containing the bot answers.
     app.post('/conversations/:conversationId/messages', async (req, res) => {
       const { conversationId } = req.params;
-      const { idOperator } = req.body;
+      const { idOperator, message, operator } = req.body;
       await this.addUserIfNecessary(conversationId);
 
+      logger.debug('Operator', operator);
+      console.log('[route] new message author type:', message.author.role);
+
       // Operator messages are sent to this endpoint too, like visitor messages
-      if (req.body.message.author.role === 'operator') {
-        const transferData = await this.bot.brain.userGet(conversationId, 'transfer');
+      if (message.author.role === 'operator') {
+        const transfer = await this.bot.brain.userGet(conversationId, 'transfer');
 
         // If transfer data was saved from the previous step, it means bot has started a transfer
         // and it needs to handle possible transfer failure
         // by awaiting and sending a transfer failure message
         // If the message is sent from operator and is not a transfer request, it means it follows normal replies
         // from the bot, so do not send any reply
-        if (transferData) {
-          await this.bot.brain.userSet(conversationId, 'transfer', null);
-          return this.handleTransferFailure({
-            res,
-            idOperator,
-            conversationId: conversationId,
-            awaitDuration: transferData.await,
-            failureMessage: transferData.failureMessage,
-          });
+        if (transfer) {
+          console.log('[route] Handle transfer');
+          return this.handleTransfer(res, conversationId, idOperator, operator);
         } else {
+          console.log('[route] Handle close');
           return this.handleCloseConversation(res, idOperator, conversationId);
         }
       }
@@ -278,36 +242,32 @@ class IadvizeAdapter extends WebAdapter {
       const transferMessageIndex = botMessages.findIndex(m => m.type === 'transfer');
       const transferMessage = botMessages.find(m => m.type === 'transfer');
 
-      // Handle failure now if transfer message is the first one
-      if (transferMessageIndex === 0) {
-        return this.handleTransferFailure({
-          res,
-          transferMessage: botMessages.map(this.adaptMessage)[0],
-          idOperator: req.body.idOperator,
-          conversationId: conversationId,
+      // If there is a transfer message to proceed then save it in the brain
+      if (transferMessage) {
+        console.log('[route] save transfer message data');
+        await this.bot.brain.userSet(conversationId, 'transfer', {
           awaitDuration: transferMessage.payload.options.awaitDuration,
           failureMessage: transferMessage.payload.options.failureMessage,
+          distributionRules: getOperatorTransferRules(operator, transferMessage.payload.options.distributionRuleLabels),
         });
       }
 
-      // If botMessages contains a transfer message and it's not the first message, save in the brain
-      // the fact that we have to handle transfer message failure on next bot message
-      if (transferMessageIndex > 0) {
-        await this.bot.brain.userSet(conversationId, 'transfer', {
-          await: transferMessage.payload.options.awaitDuration,
-          failureMessage: transferMessage.payload.options.failureMessage,
-        });
+      // Handle failure now if transfer message is the first one
+      if (transferMessageIndex === 0) {
+        console.log('[route] handleTransfer when the transfer message is first in message list');
+        return this.handleTransfer(res, conversationId, idOperator, operator);
       }
 
       // Normal case: reply bot messages to the user
       // Note: we filter close message to prevent other messages to be sent
-      const filteredMessages = botMessages.filter(m => m.type !== 'close');
-      logger.debug('botMessages to send', filteredMessages);
+      const filteredMessages = botMessages.filter(m => ['close', 'transfer'].indexOf(m.type) === -1);
+      logger.debug('[route] botMessages to send', filteredMessages);
+      console.log('[route] botMessages to send', filteredMessages);
 
       return res.send({
-        idOperator: req.body.idOperator,
+        idOperator,
         idConversation: conversationId,
-        replies: filteredMessages.map(this.adaptMessage),
+        replies: filteredMessages.map(adaptMessage),
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -325,43 +285,6 @@ class IadvizeAdapter extends WebAdapter {
         },
       ]);
     });
-  }
-
-  getCloseConversationSettings(params) {
-    logger.debug('computeCloseConversationDelay', params);
-    const {
-      closeWarningDelay,
-      closeWarningMessage,
-      closeDelay,
-    } = params;
-
-    // This is the duration to await before the warning message will be displayed
-    let warningDelayValue = DEFAULT_WARNING_DELAY;
-    if (!isNaN(closeWarningDelay)) {
-      warningDelayValue = parseInt(closeWarningDelay, 10);
-    }
-
-    // This is the duration to await between the warning and the close action
-    // If there is no more interaction with the bot during this time
-    let closeDelayValue = DEFAULT_CLOSE_DELAY;
-    if (!isNaN(closeDelay)) {
-      closeDelayValue = parseInt(closeDelay, 10);
-    }
-
-    // This is the close warning message displayed before the conversation will be closed
-    // Can be a String or a Function that take the close conversation delay
-    let warningMessageValue = DEFAULT_WARNING_MESSAGE;
-    if (closeWarningMessage) {
-      warningMessageValue = typeof closeWarningMessage === 'function'
-        ? closeWarningMessage(closeDelay)
-        : closeWarningMessage;
-    }
-
-    return {
-      closeWarningDelay: warningDelayValue,
-      closeWarningMessage: warningMessageValue,
-      closeDelay: closeDelayValue,
-    };
   }
 }
 
