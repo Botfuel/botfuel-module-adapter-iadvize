@@ -409,32 +409,28 @@ var IadvizeAdapter = function (_WebAdapter) {
                   // If there is a transfer message to proceed then save it in the brain
 
                   if (!transferMessage) {
-                    _context5.next = 37;
+                    _context5.next = 36;
                     break;
                   }
 
                   console.log('[route] save transfer message data');
-                  operator.availabilityStrategy = {
-                    distributionRulesToCheck: ['144ef472-ab1b-4bd8-924c-807f40fa9430', '421f140d-eb4c-4ad1-88e0-eb2ea35877f2', '9f27a707-4890-4cff-88d7-0a928f7a1b4f'],
-                    strategy: 'atLeastOne'
-                  };
-                  _context5.next = 37;
+                  _context5.next = 36;
                   return _this2.bot.brain.userSet(conversationId, 'transfer', {
                     awaitDuration: transferMessage.payload.options.awaitDuration,
                     failureMessage: transferMessage.payload.options.failureMessage,
                     distributionRules: getOperatorTransferRules(operator, transferMessage.payload.options.distributionRuleLabels)
                   });
 
-                case 37:
+                case 36:
                   if (!(transferMessageIndex === 0)) {
-                    _context5.next = 40;
+                    _context5.next = 39;
                     break;
                   }
 
                   console.log('[route] handleTransfer when the transfer message is first in message list');
                   return _context5.abrupt('return', _this2.handleTransfer(res, conversationId, idOperator, operator));
 
-                case 40:
+                case 39:
 
                   // Normal case: reply bot messages to the user
                   // Note: we filter close message to prevent other messages to be sent
@@ -454,7 +450,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 44:
+                case 43:
                 case 'end':
                   return _context5.stop();
               }

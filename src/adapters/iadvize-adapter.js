@@ -245,14 +245,6 @@ class IadvizeAdapter extends WebAdapter {
       // If there is a transfer message to proceed then save it in the brain
       if (transferMessage) {
         console.log('[route] save transfer message data');
-        operator.availabilityStrategy = {
-          distributionRulesToCheck: [
-            '144ef472-ab1b-4bd8-924c-807f40fa9430',
-            '421f140d-eb4c-4ad1-88e0-eb2ea35877f2',
-            '9f27a707-4890-4cff-88d7-0a928f7a1b4f',
-          ],
-          strategy: 'atLeastOne',
-        };
         await this.bot.brain.userSet(conversationId, 'transfer', {
           awaitDuration: transferMessage.payload.options.awaitDuration,
           failureMessage: transferMessage.payload.options.failureMessage,
