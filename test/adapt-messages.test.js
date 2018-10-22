@@ -69,6 +69,7 @@ describe('adapting messages', () => {
     });
   });
 
+  /**
   test('should generate the proper transfer message json', () => {
     expect(
       adaptMessage({
@@ -87,6 +88,7 @@ describe('adapting messages', () => {
       distributionRule: 'THE_RULE_ID',
     });
   });
+   */
 
   test('should generate the proper close message json', () => {
     expect(

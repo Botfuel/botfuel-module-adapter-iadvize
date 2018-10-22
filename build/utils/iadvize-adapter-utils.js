@@ -1,11 +1,14 @@
-const { Logger } = require('botfuel-dialog');
+'use strict';
 
-const logger = Logger('IAdvizeAdapterUtils');
+var _require = require('botfuel-dialog'),
+    Logger = _require.Logger;
+
+var logger = Logger('IAdvizeAdapterUtils');
 
 // Constants
-const DEFAULT_CLOSE_DELAY = 30; // seconds
-const DEFAULT_WARNING_DELAY = 30; // seconds
-const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
+var DEFAULT_CLOSE_DELAY = 30; // seconds
+var DEFAULT_WARNING_DELAY = 30; // seconds
+var DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
 
 // Messages adaptation
 
@@ -14,14 +17,14 @@ const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few second
  * @param text
  * @returns {{type: string, payload: {contentType: string, value: (string|*|null|string[])}, quickReplies: Array}}
  */
-const adaptText = (text) => {
+var adaptText = function adaptText(text) {
   return {
     type: 'message',
     payload: {
       contentType: 'text',
-      value: text,
+      value: text
     },
-    quickReplies: [],
+    quickReplies: []
   };
 };
 
@@ -30,13 +33,13 @@ const adaptText = (text) => {
  * @param duration
  * @returns {{type: string, duration: {unit: string, value: *}}}
  */
-const adaptAwait = (duration) => {
+var adaptAwait = function adaptAwait(duration) {
   return {
     type: 'await',
     duration: {
       unit: 'seconds',
-      value: duration,
-    },
+      value: duration
+    }
   };
 };
 
@@ -45,10 +48,10 @@ const adaptAwait = (duration) => {
  * @param {String} distributionRuleId - the rule to transfer to
  * @returns {{type: string, distributionRule: string}}
  */
-const adaptTransfer = (distributionRuleId) => {
+var adaptTransfer = function adaptTransfer(distributionRuleId) {
   return {
     type: 'transfer',
-    distributionRule: distributionRuleId,
+    distributionRule: distributionRuleId
   };
 };
 
@@ -56,9 +59,9 @@ const adaptTransfer = (distributionRuleId) => {
  * Adapt close action to iAdvize platform format
  * @returns {{type: string}}
  */
-const adaptClose = () => {
+var adaptClose = function adaptClose() {
   return {
-    type: 'close',
+    type: 'close'
   };
 };
 
@@ -67,18 +70,20 @@ const adaptClose = () => {
  * @param message
  * @returns {{type: string, payload: {contentType: string, value: string}, quickReplies: {contentType: string, value: T, idQuickReply: T}[]}}
  */
-const adaptQuickreplies = (message) => {
+var adaptQuickreplies = function adaptQuickreplies(message) {
   return {
     type: 'message',
     payload: {
       contentType: 'text',
-      value: '',
+      value: ''
     },
-    quickReplies: message.payload.value.map(quickreply => ({
-      contentType: 'text/quick-reply',
-      value: quickreply,
-      idQuickReply: quickreply,
-    })),
+    quickReplies: message.payload.value.map(function (quickreply) {
+      return {
+        contentType: 'text/quick-reply',
+        value: quickreply,
+        idQuickReply: quickreply
+      };
+    })
   };
 };
 
@@ -87,7 +92,7 @@ const adaptQuickreplies = (message) => {
  * @param message
  * @returns {*}
  */
-const adaptMessage = (message) => {
+var adaptMessage = function adaptMessage(message) {
   logger.debug('adaptMessage', message);
   switch (message.type) {
     case 'text':
@@ -99,9 +104,7 @@ const adaptMessage = (message) => {
     case 'close':
       return adaptClose();
     default:
-      throw new Error(
-        `Message of type ${message.type} are not supported by this adapter.`
-      );
+      throw new Error('Message of type ' + message.type + ' are not supported by this adapter.');
   }
 };
 
@@ -111,40 +114,37 @@ const adaptMessage = (message) => {
  * @param params
  * @returns {{closeWarningDelay: number, closeWarningMessage: string, closeDelay: number}}
  */
-const getCloseConversationSettings = (params) => {
+var getCloseConversationSettings = function getCloseConversationSettings(params) {
   logger.debug('computeCloseConversationDelay', params);
-  const {
-    closeWarningDelay,
-    closeWarningMessage,
-    closeDelay,
-  } = params;
+  var closeWarningDelay = params.closeWarningDelay,
+      closeWarningMessage = params.closeWarningMessage,
+      closeDelay = params.closeDelay;
 
   // This is the duration to await before the warning message will be displayed
-  let warningDelayValue = DEFAULT_WARNING_DELAY;
+
+  var warningDelayValue = DEFAULT_WARNING_DELAY;
   if (!isNaN(closeWarningDelay)) {
     warningDelayValue = parseInt(closeWarningDelay, 10);
   }
 
   // This is the duration to await between the warning and the close action
   // If there is no more interaction with the bot during this time
-  let closeDelayValue = DEFAULT_CLOSE_DELAY;
+  var closeDelayValue = DEFAULT_CLOSE_DELAY;
   if (!isNaN(closeDelay)) {
     closeDelayValue = parseInt(closeDelay, 10);
   }
 
   // This is the close warning message displayed before the conversation will be closed
   // Can be a String or a Function that take the close conversation delay
-  let warningMessageValue = DEFAULT_WARNING_MESSAGE;
+  var warningMessageValue = DEFAULT_WARNING_MESSAGE;
   if (closeWarningMessage) {
-    warningMessageValue = typeof closeWarningMessage === 'function'
-      ? closeWarningMessage(closeDelay)
-      : closeWarningMessage;
+    warningMessageValue = typeof closeWarningMessage === 'function' ? closeWarningMessage(closeDelay) : closeWarningMessage;
   }
 
   return {
     closeWarningDelay: warningDelayValue,
     closeWarningMessage: warningMessageValue,
-    closeDelay: closeDelayValue,
+    closeDelay: closeDelayValue
   };
 };
 
@@ -154,7 +154,7 @@ const getCloseConversationSettings = (params) => {
  * @param {Array<String>} labels - the labels included in transfer rules label to use as a filter
  * @returns {Array<String>} - the distributions rules ids used a transfer rules ids
  */
-const getOperatorTransferRules = (operator, labels) => {
+var getOperatorTransferRules = function getOperatorTransferRules(operator, labels) {
   // Check if label is set
   if (!labels || labels.length === 0) {
     logger.debug('getOperatorTransferRules: no label provided');
@@ -174,28 +174,28 @@ const getOperatorTransferRules = (operator, labels) => {
     return [];
   }
 
-  if (
-    !operator.availabilityStrategy ||
-    !operator.availabilityStrategy.distributionRulesToCheck ||
-    operator.availabilityStrategy.distributionRulesToCheck.length === 0
-  ) {
+  if (!operator.availabilityStrategy || !operator.availabilityStrategy.distributionRulesToCheck || operator.availabilityStrategy.distributionRulesToCheck.length === 0) {
     logger.debug('getOperatorTransferRules: operator have no distributionRulesToCheck in is availabilityStrategy');
     console.log('getOperatorTransferRules: operator have no distributionRulesToCheck in is availabilityStrategy');
     return [];
   }
 
-  const { distributionRules, availabilityStrategy } = operator;
+  var distributionRules = operator.distributionRules,
+      availabilityStrategy = operator.availabilityStrategy;
 
   // Filter rules from operator.distributionRules
   // that are in operator.availabilityStrategy.distributionRulesToCheck
-  const transferRules = distributionRules.filter(rule => availabilityStrategy.distributionRulesToCheck.indexOf(rule.id) !== -1);
+
+  var transferRules = distributionRules.filter(function (rule) {
+    return availabilityStrategy.distributionRulesToCheck.indexOf(rule.id) !== -1;
+  });
   logger.debug('getOperatorTransferRules: transferRules', transferRules);
   console.log('getOperatorTransferRules: transferRules', transferRules);
 
   // Filter by labels with label order as priority
-  const orderedRules = [];
-  labels.forEach((label) => {
-    transferRules.forEach(tr => {
+  var orderedRules = [];
+  labels.forEach(function (label) {
+    transferRules.forEach(function (tr) {
       if (tr.label.indexOf(label) !== -1) {
         orderedRules.push(tr);
       }
@@ -208,14 +208,13 @@ const getOperatorTransferRules = (operator, labels) => {
   return orderedRules;
 };
 
-
 module.exports = {
-  adaptText,
-  adaptAwait,
-  adaptTransfer,
-  adaptClose,
-  adaptQuickreplies,
-  adaptMessage,
-  getCloseConversationSettings,
-  getOperatorTransferRules,
+  adaptText: adaptText,
+  adaptAwait: adaptAwait,
+  adaptTransfer: adaptTransfer,
+  adaptClose: adaptClose,
+  adaptQuickreplies: adaptQuickreplies,
+  adaptMessage: adaptMessage,
+  getCloseConversationSettings: getCloseConversationSettings,
+  getOperatorTransferRules: getOperatorTransferRules
 };

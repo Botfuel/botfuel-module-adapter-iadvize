@@ -17,6 +17,7 @@
 const { WebAdapter, Logger } = require('botfuel-dialog');
 const {
   adaptText,
+  adaptTransfer,
   adaptAwait,
   adaptClose,
   adaptMessage,
@@ -27,43 +28,72 @@ const {
 const WARNING_STEP = 'WARNING';
 const CLOSE_STEP = 'CLOSE';
 
+const betweenTransferErrorMessage = [
+  'Un spécialiste va vous répondre dans quelques instants...',
+  'Un de nos experts se libère et va vous répondre...',
+  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
+  'Un spécialiste va vous répondre dans quelques instants...',
+  'Un de nos experts se libère et va vous répondre...',
+  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
+  'Un spécialiste va vous répondre dans quelques instants...',
+  'Un de nos experts se libère et va vous répondre...',
+  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
+];
+
+const getRandomElement = (list) => {
+  return list[Math.floor(Math.random() * Math.floor(list.length))];
+};
+
 const logger = Logger('IadvizeAdapter');
 
 class IadvizeAdapter extends WebAdapter {
   constructor(bot) {
     super(bot);
     this.closeSettings = getCloseConversationSettings(bot.config.adapter);
+    this.handleTransfer = this.handleTransfer.bind(this);
     this.handleCloseConversation = this.handleCloseConversation.bind(this);
   }
 
-  handleTransfer({
-    res,
-    idOperator,
-    operator,
-    transferMessage,
-    conversationId,
-    awaitDuration,
-    failureMessage,
-  }) {
-    logger.debug('handleTransfer', idOperator, operator, transferMessage, conversationId, awaitDuration, failureMessage);
-    // @TODO try each distributionRuleIds provided by the operator
-    // Step 1: filter operator distributionRules to remove rules that are not in availabilityStrategy.distributionRulesToCheck
-    const operatorTransferRules = getOperatorTransferRules(operator);
-    logger.debug('handleTransfer: operatorTransferRules', operatorTransferRules);
-    // Step 2: store these rules in bot brain for the transfer process
-    // Step 3: Try for each rules to transfer
-    // Step 4: If no rules worked then send the failure message
-    const failureHandlingMessage = [
-      adaptAwait(awaitDuration),
-      adaptText(failureMessage),
-    ];
+  async handleTransfer(res, conversationId, idOperator, operator) {
+    const { awaitDuration, failureMessage, distributionRules } = await this.bot.brain.userGet(conversationId, 'transfer');
+    logger.debug('handleTransfer: params', conversationId, idOperator, operator);
+    console.log('handleTransfer: params', conversationId, idOperator, operator);
+    logger.debug('handleTransfer: brain params', awaitDuration, failureMessage, distributionRules);
+    console.log('handleTransfer: brain params', awaitDuration, failureMessage, distributionRules);
 
-    const replies = !!transferMessage
-      ? [transferMessage, ...failureHandlingMessage]
-      : failureHandlingMessage;
+    const replies = [];
+    // Handle transfer failure if there is no distributionRuleId to transfer to
+    if (!distributionRules || distributionRules.length === 0) {
+      // Then add awaitDuration and failure message to replies
+      replies.push(
+        adaptAwait(awaitDuration),
+        adaptText(failureMessage),
+      );
+      // Unset transfer data
+      await this.bot.brain.userSet(conversationId, 'transfer', null);
+    } else {
+      // Take the first element from distribution rule ids (and remove it from the rule ids)
+      const distributionRule = distributionRules.shift();
+      console.log('handleTransfer: rule to transfer', distributionRule);
+      console.log('handleTransfer: rules left', distributionRules);
+      replies.push(
+        adaptTransfer(distributionRule.id),
+        adaptAwait(10),
+        adaptText(getRandomElement(betweenTransferErrorMessage)),
+      );
+      console.log('Some transfer rules to handle', replies);
+      await this.bot.brain.userSet(conversationId, 'transfer', {
+        awaitDuration,
+        failureMessage,
+        distributionRules,
+      });
+    }
+
+    logger.debug('handleTransfer: replies', replies);
+    console.log('handleTransfer: replies', replies);
 
     return res.send({
-      idOperator: idOperator,
+      idOperator,
       idConversation: conversationId,
       replies,
       variables: [],
@@ -102,9 +132,9 @@ class IadvizeAdapter extends WebAdapter {
     logger.debug('handleCloseConversation: replies', replies);
     // Finally send replies to the user
     return res.send({
-      idOperator: idOperator,
+      idOperator,
       idConversation: conversationId,
-      replies: replies,
+      replies,
       variables: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -145,26 +175,22 @@ class IadvizeAdapter extends WebAdapter {
       await this.addUserIfNecessary(conversationId);
 
       logger.debug('Operator', operator);
+      console.log('[route] new message author type:', message.author.role);
 
       // Operator messages are sent to this endpoint too, like visitor messages
       if (message.author.role === 'operator') {
-        const transferData = await this.bot.brain.userGet(conversationId, 'transfer');
+        const transfer = await this.bot.brain.userGet(conversationId, 'transfer');
 
         // If transfer data was saved from the previous step, it means bot has started a transfer
         // and it needs to handle possible transfer failure
         // by awaiting and sending a transfer failure message
         // If the message is sent from operator and is not a transfer request, it means it follows normal replies
         // from the bot, so do not send any reply
-        if (transferData) {
-          await this.bot.brain.userSet(conversationId, 'transfer', null);
-          return this.handleTransfer({
-            res,
-            idOperator,
-            conversationId: conversationId,
-            awaitDuration: transferData.await,
-            failureMessage: transferData.failureMessage,
-          });
+        if (transfer) {
+          console.log('[route] Handle transfer');
+          return this.handleTransfer(res, conversationId, idOperator, operator);
         } else {
+          console.log('[route] Handle close');
           return this.handleCloseConversation(res, idOperator, conversationId);
         }
       }
@@ -216,31 +242,35 @@ class IadvizeAdapter extends WebAdapter {
       const transferMessageIndex = botMessages.findIndex(m => m.type === 'transfer');
       const transferMessage = botMessages.find(m => m.type === 'transfer');
 
-      // Handle failure now if transfer message is the first one
-      if (transferMessageIndex === 0) {
-        return this.handleTransfer({
-          res,
-          transferMessage: botMessages.map(adaptMessage)[0],
-          idOperator: req.body.idOperator,
-          conversationId: conversationId,
+      // If there is a transfer message to proceed then save it in the brain
+      if (transferMessage) {
+        console.log('[route] save transfer message data');
+        operator.availabilityStrategy = {
+          distributionRulesToCheck: [
+            '144ef472-ab1b-4bd8-924c-807f40fa9430',
+            '421f140d-eb4c-4ad1-88e0-eb2ea35877f2',
+            '9f27a707-4890-4cff-88d7-0a928f7a1b4f',
+          ],
+          strategy: 'atLeastOne',
+        };
+        await this.bot.brain.userSet(conversationId, 'transfer', {
           awaitDuration: transferMessage.payload.options.awaitDuration,
           failureMessage: transferMessage.payload.options.failureMessage,
+          distributionRules: getOperatorTransferRules(operator, transferMessage.payload.options.distributionRuleLabels),
         });
       }
 
-      // If botMessages contains a transfer message and it's not the first message, save in the brain
-      // the fact that we have to handle transfer message failure on next bot message
-      if (transferMessageIndex > 0) {
-        await this.bot.brain.userSet(conversationId, 'transfer', {
-          await: transferMessage.payload.options.awaitDuration,
-          failureMessage: transferMessage.payload.options.failureMessage,
-        });
+      // Handle failure now if transfer message is the first one
+      if (transferMessageIndex === 0) {
+        console.log('[route] handleTransfer when the transfer message is first in message list');
+        return this.handleTransfer(res, conversationId, idOperator, operator);
       }
 
       // Normal case: reply bot messages to the user
       // Note: we filter close message to prevent other messages to be sent
-      const filteredMessages = botMessages.filter(m => m.type !== 'close');
-      logger.debug('botMessages to send', filteredMessages);
+      const filteredMessages = botMessages.filter(m => ['close', 'transfer'].indexOf(m.type) === -1);
+      logger.debug('[route] botMessages to send', filteredMessages);
+      console.log('[route] botMessages to send', filteredMessages);
 
       return res.send({
         idOperator,
