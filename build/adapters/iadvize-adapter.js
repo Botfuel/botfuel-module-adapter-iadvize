@@ -83,48 +83,60 @@ var IadvizeAdapter = function (_WebAdapter) {
                 failureMessage = _ref2.failureMessage;
                 distributionRules = _ref2.distributionRules;
 
-                logger.debug('handleTransfer: params', conversationId, idOperator, operator);
-                console.log('handleTransfer: params', conversationId, idOperator, operator);
-                logger.debug('handleTransfer: brain params', awaitDuration, failureMessage, distributionRules);
-                console.log('handleTransfer: brain params', awaitDuration, failureMessage, distributionRules);
+                logger.debug('\n    handleTransfer: conversationId=' + conversationId + ' idOperator=' + idOperator + ' operator=' + operator + '\n    awaitDuration=' + awaitDuration + ' failureMessage=' + failureMessage + ' distributionRules=' + distributionRules + '\n    ');
 
                 replies = [];
                 // Handle transfer failure if there is no distributionRuleId to transfer to
 
                 if (!(!distributionRules || distributionRules.length === 0)) {
-                  _context.next = 17;
+                  _context.next = 15;
                   break;
                 }
 
+                logger.debug('handleTransfer: no distribution rules');
                 // Then add awaitDuration and failure message to replies
                 replies.push(adaptAwait(awaitDuration), adaptText(failureMessage));
                 // Unset transfer data
-                _context.next = 15;
+                _context.next = 13;
                 return this.bot.brain.userSet(conversationId, 'transfer', null);
 
-              case 15:
-                _context.next = 24;
+              case 13:
+                _context.next = 27;
                 break;
 
-              case 17:
+              case 15:
+                if (!(distributionRules.length === 1)) {
+                  _context.next = 22;
+                  break;
+                }
+
+                logger.debug('handleTransfer: only one distribution rule');
+                // Then add awaitDuration and failure message to replies
+                replies.push(adaptTransfer(distributionRules[0].id), adaptAwait(awaitDuration), adaptText(failureMessage));
+                // Unset transfer data
+                _context.next = 20;
+                return this.bot.brain.userSet(conversationId, 'transfer', null);
+
+              case 20:
+                _context.next = 27;
+                break;
+
+              case 22:
+                logger.debug('handleTransfer: many distribution rules');
                 // Take the first element from distribution rule ids (and remove it from the rule ids)
                 distributionRule = distributionRules.shift();
 
-                console.log('handleTransfer: rule to transfer', distributionRule);
-                console.log('handleTransfer: rules left', distributionRules);
                 replies.push(adaptTransfer(distributionRule.id), adaptAwait(10), adaptText(getRandomElement(betweenTransferErrorMessage)));
-                console.log('Some transfer rules to handle', replies);
-                _context.next = 24;
+                _context.next = 27;
                 return this.bot.brain.userSet(conversationId, 'transfer', {
                   awaitDuration: awaitDuration,
                   failureMessage: failureMessage,
                   distributionRules: distributionRules
                 });
 
-              case 24:
+              case 27:
 
                 logger.debug('handleTransfer: replies', replies);
-                console.log('handleTransfer: replies', replies);
 
                 return _context.abrupt('return', res.send({
                   idOperator: idOperator,
@@ -135,7 +147,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   updatedAt: new Date()
                 }));
 
-              case 27:
+              case 29:
               case 'end':
                 return _context.stop();
             }
@@ -310,13 +322,13 @@ var IadvizeAdapter = function (_WebAdapter) {
 
                 case 4:
 
-                  logger.debug('Operator', operator);
-                  console.log('[route] new message author type:', message.author.role);
+                  logger.debug('[route] new message author type:', message.author.role);
+                  logger.debug('[route] operator', operator);
 
                   // Operator messages are sent to this endpoint too, like visitor messages
 
                   if (!(message.author.role === 'operator')) {
-                    _context5.next = 17;
+                    _context5.next = 15;
                     break;
                   }
 
@@ -327,19 +339,17 @@ var IadvizeAdapter = function (_WebAdapter) {
                   transfer = _context5.sent;
 
                   if (!transfer) {
-                    _context5.next = 15;
+                    _context5.next = 14;
                     break;
                   }
 
-                  console.log('[route] Handle transfer');
                   return _context5.abrupt('return', _this2.handleTransfer(res, conversationId, idOperator, operator));
 
-                case 15:
-                  console.log('[route] Handle close');
+                case 14:
                   return _context5.abrupt('return', _this2.handleCloseConversation(res, idOperator, conversationId));
 
-                case 17:
-                  _context5.next = 19;
+                case 15:
+                  _context5.next = 17;
                   return _this2.bot.handleMessage(_this2.extendMessage({
                     type: 'text',
                     user: conversationId,
@@ -348,7 +358,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     }
                   }));
 
-                case 19:
+                case 17:
                   botMessages = _context5.sent;
 
 
@@ -364,7 +374,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                   });
 
                   if (!(closeMessageIndex !== -1)) {
-                    _context5.next = 28;
+                    _context5.next = 26;
                     break;
                   }
 
@@ -372,7 +382,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     return m.type === 'close';
                   });
                   _closeMessage$payload = closeMessage.payload.options, closeWarningDelay = _closeMessage$payload.closeWarningDelay, closeWarningMessage = _closeMessage$payload.closeWarningMessage, closeDelay = _closeMessage$payload.closeDelay;
-                  _context5.next = 26;
+                  _context5.next = 24;
                   return _this2.bot.brain.userSet(conversationId, 'close', {
                     step: WARNING_STEP,
                     closeWarningDelay: closeWarningDelay,
@@ -380,12 +390,12 @@ var IadvizeAdapter = function (_WebAdapter) {
                     closeDelay: closeDelay
                   });
 
-                case 26:
-                  _context5.next = 30;
+                case 24:
+                  _context5.next = 28;
                   break;
 
-                case 28:
-                  _context5.next = 30;
+                case 26:
+                  _context5.next = 28;
                   return _this2.bot.brain.userSet(conversationId, 'close', {
                     step: WARNING_STEP,
                     closeWarningDelay: _this2.closeSettings.closeWarningDelay,
@@ -393,7 +403,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     closeDelay: _this2.closeSettings.closeDelay
                   });
 
-                case 30:
+                case 28:
 
                   /**
                    * Handling Transfer action from user
@@ -409,28 +419,28 @@ var IadvizeAdapter = function (_WebAdapter) {
                   // If there is a transfer message to proceed then save it in the brain
 
                   if (!transferMessage) {
-                    _context5.next = 36;
+                    _context5.next = 34;
                     break;
                   }
 
-                  console.log('[route] save transfer message data');
-                  _context5.next = 36;
+                  logger.debug('[route] save transfer message data');
+                  _context5.next = 34;
                   return _this2.bot.brain.userSet(conversationId, 'transfer', {
                     awaitDuration: transferMessage.payload.options.awaitDuration,
                     failureMessage: transferMessage.payload.options.failureMessage,
                     distributionRules: getOperatorTransferRules(operator, transferMessage.payload.options.distributionRuleLabels)
                   });
 
-                case 36:
+                case 34:
                   if (!(transferMessageIndex === 0)) {
-                    _context5.next = 39;
+                    _context5.next = 37;
                     break;
                   }
 
-                  console.log('[route] handleTransfer when the transfer message is first in message list');
+                  logger.debug('[route] handleTransfer when the transfer message is first in message list');
                   return _context5.abrupt('return', _this2.handleTransfer(res, conversationId, idOperator, operator));
 
-                case 39:
+                case 37:
 
                   // Normal case: reply bot messages to the user
                   // Note: we filter close message to prevent other messages to be sent
@@ -439,7 +449,6 @@ var IadvizeAdapter = function (_WebAdapter) {
                   });
 
                   logger.debug('[route] botMessages to send', filteredMessages);
-                  console.log('[route] botMessages to send', filteredMessages);
 
                   return _context5.abrupt('return', res.send({
                     idOperator: idOperator,
@@ -450,7 +459,7 @@ var IadvizeAdapter = function (_WebAdapter) {
                     updatedAt: new Date()
                   }));
 
-                case 43:
+                case 40:
                 case 'end':
                   return _context5.stop();
               }
