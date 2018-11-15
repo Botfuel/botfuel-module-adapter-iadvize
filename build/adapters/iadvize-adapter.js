@@ -322,7 +322,7 @@ var IadvizeAdapter = function (_WebAdapter) {
 
                 case 4:
 
-                  logger.debug('[route] new message author type:', message.author.role);
+                  logger.debug('[route] message', message);
                   logger.debug('[route] operator', operator);
 
                   // Operator messages are sent to this endpoint too, like visitor messages
