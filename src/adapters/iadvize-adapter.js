@@ -63,7 +63,7 @@ class IadvizeAdapter extends WebAdapter {
 
     const replies = [];
     // Handle transfer failure if there is no distributionRuleId to transfer to
-    if (!distributionRules || distributionRules.length === 0) {
+    if ((!distributionRules || distributionRules.length === 0)) {
       logger.debug('handleTransfer: no distribution rules');
       // Then add awaitDuration and failure message to replies
       replies.push(
@@ -182,7 +182,7 @@ class IadvizeAdapter extends WebAdapter {
       const { idOperator, message, operator } = req.body;
       await this.addUserIfNecessary(conversationId);
 
-      logger.debug('[route] new message author type:', message.author.role);
+      logger.debug('[route] message', message);
       logger.debug('[route] operator', operator);
 
       // Operator messages are sent to this endpoint too, like visitor messages
