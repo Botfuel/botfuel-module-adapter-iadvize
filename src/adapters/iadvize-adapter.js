@@ -209,8 +209,15 @@ class IadvizeAdapter extends WebAdapter {
           user: conversationId,
           payload: {
             value: req.body.message.payload.value,
+            options: {
+              origin: {
+                adapter: 'IAdvize',
+                referrer: idOperator,
+                idWebsite: req.query.idWebsite || null,
+              },
+            },
           },
-        })
+        }),
       );
 
       /**
