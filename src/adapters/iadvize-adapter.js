@@ -34,9 +34,7 @@ const betweenTransferErrorMessage = [
   'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
 ];
 
-const getRandomElement = (list) => {
-  return list[Math.floor(Math.random() * Math.floor(list.length))];
-};
+const getRandomElement = list => list[Math.floor(Math.random() * Math.floor(list.length))];
 
 const logger = Logger('IadvizeAdapter');
 
@@ -186,18 +184,19 @@ class IadvizeAdapter extends WebAdapter {
         // If transfer data was saved from the previous step, it means bot has started a transfer
         // and it needs to handle possible transfer failure
         // by awaiting and sending a transfer failure message
-        // If the message is sent from operator and is not a transfer request, it means it follows normal replies
+        // If the message is sent from operator and is not a transfer request,
+        // it means it follows normal replies
         // from the bot, so do not send any reply
         if (transfer) {
           return this.handleTransfer(res, conversationId, idOperator, operator);
-        } else {
-          return this.handleCloseConversation(res, idOperator, conversationId);
         }
+        // Default case, handle conversation close
+        return this.handleCloseConversation(res, idOperator, conversationId);
       }
 
       // Here role === 'visitor'
 
-      let botMessages = await this.bot.handleMessage(
+      const botMessages = await this.bot.handleMessage(
         this.extendMessage({
           type: 'text',
           user: conversationId,
@@ -227,11 +226,11 @@ class IadvizeAdapter extends WebAdapter {
         const { closeWarningDelay, closeWarningMessage, closeDelay } = closeMessage.payload.options;
         await this.bot.brain.userSet(conversationId, 'close', {
           step: WARNING_STEP,
-          closeWarningDelay: closeWarningDelay,
+          closeWarningDelay,
           closeWarningMessage: typeof closeWarningMessage === 'function'
             ? closeWarningMessage(closeDelay)
             : closeWarningMessage,
-          closeDelay: closeDelay,
+          closeDelay,
         });
       } else {
         await this.bot.brain.userSet(conversationId, 'close', {
@@ -252,10 +251,15 @@ class IadvizeAdapter extends WebAdapter {
       // If there is a transfer message to proceed then save it in the brain
       if (transferMessage) {
         logger.debug('[route] save transfer message data');
+        const {
+          awaitDuration,
+          failureMessage,
+          distributionRuleLabels,
+        } = transferMessage.payload.options;
         await this.bot.brain.userSet(conversationId, 'transfer', {
-          awaitDuration: transferMessage.payload.options.awaitDuration,
-          failureMessage: transferMessage.payload.options.failureMessage,
-          distributionRules: getOperatorTransferRules(operator, transferMessage.payload.options.distributionRuleLabels),
+          awaitDuration,
+          failureMessage,
+          distributionRules: getOperatorTransferRules(operator, distributionRuleLabels),
         });
       }
 
