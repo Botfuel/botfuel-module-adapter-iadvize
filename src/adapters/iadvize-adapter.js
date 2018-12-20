@@ -211,7 +211,7 @@ class IadvizeAdapter extends WebAdapter {
             value: req.body.message.payload.value,
             options: {
               origin: {
-                adapter: 'IAdvize',
+                adapter: 'iadvize',
                 referrer: idOperator,
                 idWebsite: req.query.idWebsite || null,
               },
