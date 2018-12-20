@@ -32,12 +32,6 @@ const betweenTransferErrorMessage = [
   'Un spécialiste va vous répondre dans quelques instants...',
   'Un de nos experts se libère et va vous répondre...',
   'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
-  'Un spécialiste va vous répondre dans quelques instants...',
-  'Un de nos experts se libère et va vous répondre...',
-  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
-  'Un spécialiste va vous répondre dans quelques instants...',
-  'Un de nos experts se libère et va vous répondre...',
-  'Dans quelques secondes un de nos experts va pouvoir vous répondre...',
 ];
 
 const getRandomElement = (list) => {
