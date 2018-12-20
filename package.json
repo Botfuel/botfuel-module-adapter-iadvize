@@ -9,7 +9,6 @@
   "scripts": {
     "test": "BOTFUEL_APP_TOKEN=TEST_BOT BOTFUEL_APP_ID=TEST BOTFUEL_APP_KEY=TEST jest",
     "style": "eslint src && eslint tests",
-    "release": "yarn test && conventional-changelog -p angular -i CHANGELOG.md -s && yarn publish",
     "prebuild": "node ./scripts/prebuild.js ",
     "build": "babel src --out-dir build",
     "prepare": "npm run build"
