@@ -12,75 +12,65 @@ const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few second
 /**
  * Adapt text message to iAdvize platform format
  * @param text
- * @returns {{type: string, payload: {contentType: string, value: (string|*|null|string[])}, quickReplies: Array}}
+ * @returns {Object}
  */
-const adaptText = (text) => {
-  return {
-    type: 'message',
-    payload: {
-      contentType: 'text',
-      value: text,
-    },
-    quickReplies: [],
-  };
-};
+const adaptText = text => ({
+  type: 'message',
+  payload: {
+    contentType: 'text',
+    value: text,
+  },
+  quickReplies: [],
+});
 
 /**
  * Adapt await action to iAdvize platform format
  * @param duration
- * @returns {{type: string, duration: {unit: string, value: *}}}
+ * @returns {Object}
  */
-const adaptAwait = (duration) => {
-  return {
-    type: 'await',
-    duration: {
-      unit: 'seconds',
-      value: duration,
-    },
-  };
-};
+const adaptAwait = duration => ({
+  type: 'await',
+  duration: {
+    unit: 'seconds',
+    value: duration,
+  },
+});
 
 /**
  * Adapt transfer action to iAdvize platform format
  * @param {String} distributionRuleId - the rule to transfer to
- * @returns {{type: string, distributionRule: string}}
+ * @returns {Object}
  */
-const adaptTransfer = (distributionRuleId) => {
-  return {
-    type: 'transfer',
-    distributionRule: distributionRuleId,
-  };
-};
+const adaptTransfer = distributionRuleId => ({
+  type: 'transfer',
+  distributionRule: distributionRuleId,
+});
 
 /**
  * Adapt close action to iAdvize platform format
- * @returns {{type: string}}
+ * @returns {Object}
  */
-const adaptClose = () => {
-  return {
-    type: 'close',
-  };
-};
+const adaptClose = () => ({
+  type: 'close',
+});
 
 /**
  * Adapt quick replies to iAdvize platform format
  * @param message
- * @returns {{type: string, payload: {contentType: string, value: string}, quickReplies: {contentType: string, value: T, idQuickReply: T}[]}}
+ * @returns {Object}
  */
-const adaptQuickreplies = (message) => {
-  return {
-    type: 'message',
-    payload: {
-      contentType: 'text',
-      value: '',
-    },
-    quickReplies: message.payload.value.map(quickreply => ({
-      contentType: 'text/quick-reply',
-      value: quickreply,
-      idQuickReply: quickreply,
-    })),
-  };
-};
+const adaptQuickreplies = message => ({
+  type: 'message',
+  payload: {
+    contentType: 'text',
+    value: '',
+  },
+  quickReplies: message.payload.value.map(qr => ({
+    contentType: 'text/quick-reply',
+    value: qr,
+    idQuickReply: qr,
+  })),
+});
 
 /**
  * Adapt message to iAdvize platform format
@@ -99,9 +89,7 @@ const adaptMessage = (message) => {
     case 'close':
       return adaptClose();
     default:
-      throw new Error(
-        `Message of type ${message.type} are not supported by this adapter.`
-      );
+      throw new Error(`Message of type ${message.type} are not supported by this adapter.`);
   }
 };
 
@@ -109,7 +97,7 @@ const adaptMessage = (message) => {
  * Returns close conversation settings so that the bot knows how to handle
  * Conversation closing
  * @param params
- * @returns {{closeWarningDelay: number, closeWarningMessage: string, closeDelay: number}}
+ * @returns {Object}
  */
 const getCloseConversationSettings = (params) => {
   logger.debug('computeCloseConversationDelay', params);
@@ -121,14 +109,14 @@ const getCloseConversationSettings = (params) => {
 
   // This is the duration to await before the warning message will be displayed
   let warningDelayValue = DEFAULT_WARNING_DELAY;
-  if (!isNaN(closeWarningDelay)) {
+  if (!Number.isNaN(closeWarningDelay)) {
     warningDelayValue = parseInt(closeWarningDelay, 10);
   }
 
   // This is the duration to await between the warning and the close action
   // If there is no more interaction with the bot during this time
   let closeDelayValue = DEFAULT_CLOSE_DELAY;
-  if (!isNaN(closeDelay)) {
+  if (!Number.isNaN(closeDelay)) {
     closeDelayValue = parseInt(closeDelay, 10);
   }
 
@@ -158,14 +146,12 @@ const getOperatorTransferRules = (operator, labels) => {
   // Check if label is set
   if (!labels || labels.length === 0) {
     logger.debug('getOperatorTransferRules: no label provided');
-    console.log('getOperatorTransferRules: no label provided');
     return [];
   }
 
   // Check if operator have
   if (!operator) {
     logger.debug('getOperatorTransferRules: no operator data');
-    console.log('getOperatorTransferRules: no operator data');
     return [];
   }
 
@@ -180,7 +166,6 @@ const getOperatorTransferRules = (operator, labels) => {
     operator.availabilityStrategy.distributionRulesToCheck.length === 0
   ) {
     logger.debug('getOperatorTransferRules: operator have no distributionRulesToCheck in is availabilityStrategy');
-    console.log('getOperatorTransferRules: operator have no distributionRulesToCheck in is availabilityStrategy');
     return [];
   }
 
@@ -188,14 +173,14 @@ const getOperatorTransferRules = (operator, labels) => {
 
   // Filter rules from operator.distributionRules
   // that are in operator.availabilityStrategy.distributionRulesToCheck
-  const transferRules = distributionRules.filter(rule => availabilityStrategy.distributionRulesToCheck.indexOf(rule.id) !== -1);
+  const transferRules = distributionRules
+    .filter(rule => availabilityStrategy.distributionRulesToCheck.indexOf(rule.id) !== -1);
   logger.debug('getOperatorTransferRules: transferRules', transferRules);
-  console.log('getOperatorTransferRules: transferRules', transferRules);
 
   // Filter by labels with label order as priority
   const orderedRules = [];
   labels.forEach((label) => {
-    transferRules.forEach(tr => {
+    transferRules.forEach((tr) => {
       if (tr.label.indexOf(label) !== -1) {
         orderedRules.push(tr);
       }
@@ -203,7 +188,6 @@ const getOperatorTransferRules = (operator, labels) => {
   });
 
   logger.debug('getOperatorTransferRules: orderedRules', orderedRules);
-  console.log('getOperatorTransferRules: orderedRules', orderedRules);
 
   return orderedRules;
 };
