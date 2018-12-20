@@ -11,7 +11,8 @@
     "style": "eslint src && eslint tests",
     "release": "yarn test && conventional-changelog -p angular -i CHANGELOG.md -s && yarn publish",
     "prebuild": "node ./scripts/prebuild.js ",
-    "build": "babel src --out-dir build"
+    "build": "babel src --out-dir build",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "botfuel-dialog": "^11.6.0"
