@@ -139,10 +139,11 @@ const getCloseConversationSettings = (params) => {
 /**
  * Get transfer distributionRules for the operator provided for the transfer action
  * @param {Object} operator - the operator data
- * @param {Array<String>} names - the names included in botfuel routing rules name to use as a filter
+ * @param {Array<String>} names - the names of botfuel routing rules to try for transfer
  * @returns {Array<String>} - the distributions rules ids used a transfer rules ids
  */
 const getOperatorTransferRules = (operator, names) => {
+  logger.debug(`getOperatorTransferRules: operator=${JSON.stringify(operator)} labels=${JSON.stringify(names)}`);
   // validate rule names to check
   if (!names || names.length === 0) {
     logger.debug('getTransferRules: no botfuel routing rule names provided');
