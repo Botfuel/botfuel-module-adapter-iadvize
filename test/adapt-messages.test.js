@@ -47,7 +47,7 @@ describe('adapting messages', () => {
         },
         sender: 'bot',
         type: 'quickreplies',
-      })
+      }),
     ).toEqual({
       type: 'message',
       payload: {
@@ -181,7 +181,7 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeDelay: "delay",
+          closeDelay: 'delay',
         },
       },
     });
@@ -196,8 +196,8 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeDelay: "delay",
-          closeWarningDelay: "closeWarningDelay",
+          closeDelay: 'delay',
+          closeWarningDelay: 'closeWarningDelay',
         },
       },
     });
