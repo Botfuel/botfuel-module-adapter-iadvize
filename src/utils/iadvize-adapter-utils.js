@@ -139,58 +139,41 @@ const getCloseConversationSettings = (params) => {
 /**
  * Get transfer distributionRules for the operator provided for the transfer action
  * @param {Object} operator - the operator data
- * @param {Array<String>} labels - the labels included in transfer rules label to use as a filter
+ * @param {Array<String>} names - the names included in botfuel routing rules name to use as a filter
  * @returns {Array<String>} - the distributions rules ids used a transfer rules ids
  */
-const getOperatorTransferRules = (operator, labels) => {
-  logger.debug(`getOperatorTransferRules: operator=${JSON.stringify(operator)} labels=${JSON.stringify(labels)}`);
-  // Check if label is set
-  if (!labels || labels.length === 0) {
-    logger.debug('getOperatorTransferRules: invalid labels');
+const getOperatorTransferRules = (operator, names) => {
+  // validate rule names to check
+  if (!names || names.length === 0) {
+    logger.debug('getTransferRules: no botfuel routing rule names provided');
     return [];
   }
 
-  // Check if operator have
+  // validate operator
   if (!operator) {
-    logger.debug('getOperatorTransferRules: invalid operator');
+    logger.debug('getTransferRules: no operator provided');
     return [];
   }
 
-  if (!operator.distributionRules || operator.distributionRules.length === 0) {
-    logger.debug('getOperatorTransferRules: invalid operator distributionRules');
+  // validate operator botfuel routing rules
+  if (!operator.botfuelRoutingRules || operator.botfuelRoutingRules.length === 0) {
+    logger.debug('getTransferRules: invalid operator botfuelRoutingRules');
     return [];
   }
 
-  if (
-    !operator.availabilityStrategy ||
-    !operator.availabilityStrategy.distributionRulesToCheck ||
-    operator.availabilityStrategy.distributionRulesToCheck.length === 0
-  ) {
-    logger.debug('getOperatorTransferRules: invalid operator availabilityStrategy');
-    return [];
+  // using a loop to keep the keep to order defined in transfer action botfuelRoutingRuleNames
+  const rules = [];
+  for (const name of names) {
+    const rule = operator.botfuelRoutingRules.find(r => r.enabled && r.name === name);
+    if (rule) {
+      // if rule match then add it to rules list
+      rules.push(rule.routingRule);
+    }
   }
+  logger.debug('getTransferRules: rules to try for transfer', rules);
 
-  const { distributionRules, availabilityStrategy } = operator;
-
-  // Filter rules from operator.distributionRules
-  // that are in operator.availabilityStrategy.distributionRulesToCheck
-  const transferRules = distributionRules
-    .filter(rule => availabilityStrategy.distributionRulesToCheck.indexOf(rule.id) !== -1);
-
-  // Filter by labels with label order as priority
-  const orderedRules = [];
-  labels.forEach((label) => {
-    transferRules.forEach((tr) => {
-      if (tr.label.indexOf(label) !== -1) {
-        orderedRules.push(tr);
-      }
-    });
-  });
-
-  logger.debug('getOperatorTransferRules: operator transfer rules computed', orderedRules);
-  return orderedRules;
+  return rules;
 };
-
 
 module.exports = {
   adaptText,

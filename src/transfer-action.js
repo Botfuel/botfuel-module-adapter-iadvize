@@ -2,20 +2,20 @@ const { Message } = require('botfuel-dialog');
 
 module.exports = class TransferAction extends Message {
   constructor({
-    distributionRuleLabels,
+    botfuelRoutingRuleNames,
     failureMessage = 'Le transfert a échoué.',
     awaitDuration = 30,
   }) {
     super('transfer', 'bot', null, {
-      distributionRuleLabels,
+      botfuelRoutingRuleNames,
       failureMessage,
       awaitDuration,
     });
-    this.validateArray('distributionRuleLabels', distributionRuleLabels);
+    this.validateArray('botfuelRoutingRuleNames', botfuelRoutingRuleNames);
   }
 
   validate() {
     super.validate();
-    this.validateArray('distributionRuleLabels', this.payload.options.distributionRuleLabels);
+    this.validateArray('botfuelRoutingRuleNames', this.payload.options.botfuelRoutingRuleNames);
   }
 };
