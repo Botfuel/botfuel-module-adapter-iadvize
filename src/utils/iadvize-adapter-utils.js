@@ -143,20 +143,21 @@ const getCloseConversationSettings = (params) => {
  * @returns {Array<String>} - the distributions rules ids used a transfer rules ids
  */
 const getOperatorTransferRules = (operator, labels) => {
+  logger.debug(`getOperatorTransferRules: operator=${JSON.stringify(operator)} labels=${JSON.stringify(labels)}`);
   // Check if label is set
   if (!labels || labels.length === 0) {
-    logger.debug('getOperatorTransferRules: no label provided');
+    logger.debug('getOperatorTransferRules: invalid labels');
     return [];
   }
 
   // Check if operator have
   if (!operator) {
-    logger.debug('getOperatorTransferRules: no operator data');
+    logger.debug('getOperatorTransferRules: invalid operator');
     return [];
   }
 
   if (!operator.distributionRules || operator.distributionRules.length === 0) {
-    logger.debug('getOperatorTransferRules: operator have no distributionRules');
+    logger.debug('getOperatorTransferRules: invalid operator distributionRules');
     return [];
   }
 
@@ -165,7 +166,7 @@ const getOperatorTransferRules = (operator, labels) => {
     !operator.availabilityStrategy.distributionRulesToCheck ||
     operator.availabilityStrategy.distributionRulesToCheck.length === 0
   ) {
-    logger.debug('getOperatorTransferRules: operator have no distributionRulesToCheck in is availabilityStrategy');
+    logger.debug('getOperatorTransferRules: invalid operator availabilityStrategy');
     return [];
   }
 
@@ -175,7 +176,6 @@ const getOperatorTransferRules = (operator, labels) => {
   // that are in operator.availabilityStrategy.distributionRulesToCheck
   const transferRules = distributionRules
     .filter(rule => availabilityStrategy.distributionRulesToCheck.indexOf(rule.id) !== -1);
-  logger.debug('getOperatorTransferRules: transferRules', transferRules);
 
   // Filter by labels with label order as priority
   const orderedRules = [];
@@ -187,8 +187,7 @@ const getOperatorTransferRules = (operator, labels) => {
     });
   });
 
-  logger.debug('getOperatorTransferRules: orderedRules', orderedRules);
-
+  logger.debug('getOperatorTransferRules: operator transfer rules computed', orderedRules);
   return orderedRules;
 };
 
