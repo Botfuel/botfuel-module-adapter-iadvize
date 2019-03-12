@@ -63,7 +63,7 @@ const adaptQuickreplies = message => ({
   type: 'message',
   payload: {
     contentType: 'text',
-    value: '',
+    value: message.payload.options.text || '',
   },
   quickReplies: message.payload.value.map(qr => ({
     contentType: 'text/quick-reply',
