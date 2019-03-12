@@ -27,7 +27,7 @@ describe('adapting messages', () => {
         },
         sender: 'bot',
         type: 'text',
-      })
+      }),
     ).toEqual({
       type: 'message',
       payload: {
@@ -47,7 +47,7 @@ describe('adapting messages', () => {
         },
         sender: 'bot',
         type: 'quickreplies',
-      })
+      }),
     ).toEqual({
       type: 'message',
       payload: {
@@ -69,26 +69,39 @@ describe('adapting messages', () => {
     });
   });
 
-  /**
-  test('should generate the proper transfer message json', () => {
+  test('should generate the proper quickreplies message json', () => {
     expect(
       adaptMessage({
         id: 1,
         payload: {
-          value: null,
+          value: ['yes', 'no'],
           options: {
-            distributionRuleId: 'THE_RULE_ID'
-          }
+            text: 'QuickReplies text option',
+          },
         },
         sender: 'bot',
-        type: 'transfer',
-      })
+        type: 'quickreplies',
+      }),
     ).toEqual({
-      type: 'transfer',
-      distributionRule: 'THE_RULE_ID',
+      type: 'message',
+      payload: {
+        contentType: 'text',
+        value: 'QuickReplies text option',
+      },
+      quickReplies: [
+        {
+          contentType: 'text/quick-reply',
+          value: 'yes',
+          idQuickReply: 'yes',
+        },
+        {
+          contentType: 'text/quick-reply',
+          value: 'no',
+          idQuickReply: 'no',
+        },
+      ],
     });
   });
-   */
 
   test('should generate the proper close message json', () => {
     expect(
@@ -97,7 +110,7 @@ describe('adapting messages', () => {
         payload: null,
         sender: 'bot',
         type: 'close',
-      })
+      }),
     ).toEqual({ type: 'close' });
   });
 });
@@ -132,7 +145,7 @@ describe('Close settings', () => {
       config: {
         adapter: {
           closeDelay: 100,
-          closeWarningDelay: 80
+          closeWarningDelay: 80,
         },
       },
     });
@@ -166,7 +179,7 @@ describe('Close settings', () => {
         adapter: {
           closeDelay: 400,
           closeWarningDelay: 300,
-          closeWarningMessage: (delay) => `The conversation will be closed in ${delay} seconds`,
+          closeWarningMessage: delay => `The conversation will be closed in ${delay} seconds`,
         },
       },
     });
@@ -181,7 +194,7 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeDelay: "delay",
+          closeDelay: 'delay',
         },
       },
     });
@@ -196,8 +209,8 @@ describe('Close settings', () => {
     const adapter = new IadvizeAdapter({
       config: {
         adapter: {
-          closeDelay: "delay",
-          closeWarningDelay: "closeWarningDelay",
+          closeDelay: 'delay',
+          closeWarningDelay: 'closeWarningDelay',
         },
       },
     });
