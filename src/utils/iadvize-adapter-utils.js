@@ -63,7 +63,7 @@ const adaptQuickreplies = message => ({
   type: 'message',
   payload: {
     contentType: 'text',
-    value: message.payload.options.text || '',
+    value: (message.payload.options && message.payload.options.text) || '',
   },
   quickReplies: message.payload.value.map(qr => ({
     contentType: 'text/quick-reply',
@@ -108,17 +108,11 @@ const getCloseConversationSettings = (params) => {
   } = params;
 
   // This is the duration to await before the warning message will be displayed
-  let warningDelayValue = DEFAULT_WARNING_DELAY;
-  if (!Number.isNaN(closeWarningDelay)) {
-    warningDelayValue = parseInt(closeWarningDelay, 10);
-  }
+  const warningDelayValue = parseInt(closeWarningDelay, 10) || DEFAULT_WARNING_DELAY;
 
   // This is the duration to await between the warning and the close action
   // If there is no more interaction with the bot during this time
-  let closeDelayValue = DEFAULT_CLOSE_DELAY;
-  if (!Number.isNaN(closeDelay)) {
-    closeDelayValue = parseInt(closeDelay, 10);
-  }
+  const closeDelayValue = parseInt(closeDelay, 10) || DEFAULT_CLOSE_DELAY;
 
   // This is the close warning message displayed before the conversation will be closed
   // Can be a String or a Function that take the close conversation delay
