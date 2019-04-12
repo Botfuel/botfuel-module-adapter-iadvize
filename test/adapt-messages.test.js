@@ -15,7 +15,7 @@
  */
 
 const IadvizeAdapter = require('../src/adapters/iadvize-adapter');
-const { adaptMessage } = require('../src/utils/iadvize-adapter-utils');
+const { adaptMessage, adaptMessages } = require('../src/utils/iadvize-adapter-utils');
 
 describe('adapting messages', () => {
   test('should generate the proper text message json', () => {
@@ -112,6 +112,68 @@ describe('adapting messages', () => {
         type: 'close',
       }),
     ).toEqual({ type: 'close' });
+  });
+
+  test('should generate the proper json for many messages with await', () => {
+    const awaitDuration = 0.2;
+    expect(
+      adaptMessages([
+        {
+          id: 1,
+          payload: {
+            value: 'Hello bot',
+          },
+          sender: 'bot',
+          type: 'text',
+        },
+        {
+          id: 1,
+          payload: {
+            value: ['yes', 'no'],
+            options: {
+              text: 'QuickReplies text option',
+            },
+          },
+          sender: 'bot',
+          type: 'quickreplies',
+        },
+      ], awaitDuration),
+    ).toEqual([
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'Hello bot',
+        },
+        quickReplies: [],
+      },
+      {
+        type: 'await',
+        duration: {
+          unit: 'seconds',
+          value: awaitDuration,
+        },
+      },
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'QuickReplies text option',
+        },
+        quickReplies: [
+          {
+            contentType: 'text/quick-reply',
+            value: 'yes',
+            idQuickReply: 'yes',
+          },
+          {
+            contentType: 'text/quick-reply',
+            value: 'no',
+            idQuickReply: 'no',
+          },
+        ],
+      },
+    ]);
   });
 });
 
@@ -219,5 +281,27 @@ describe('Close settings', () => {
       closeWarningDelay: 30,
       closeWarningMessage: 'The conversation will be closed in a few seconds',
     });
+  });
+});
+
+describe('Delay between messages', () => {
+  test('should generate the proper delay between messages when not provided in config', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {},
+      },
+    });
+    expect(adapter.delayBetweenMessages).toEqual(0.5);
+  });
+
+  test('should generate the proper delay between messages when provided in config', () => {
+    const adapter = new IadvizeAdapter({
+      config: {
+        adapter: {
+          delayBetweenMessages: 1,
+        },
+      },
+    });
+    expect(adapter.delayBetweenMessages).toEqual(1);
   });
 });

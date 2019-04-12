@@ -20,13 +20,14 @@ const {
   adaptTransfer,
   adaptAwait,
   adaptClose,
-  adaptMessage,
+  adaptMessages,
   getCloseConversationSettings,
   getOperatorTransferRules,
 } = require('../utils/iadvize-adapter-utils');
 
 const WARNING_STEP = 'WARNING';
 const CLOSE_STEP = 'CLOSE';
+const DELAY_BETWEEN_MESSAGES = 0.5;
 
 const betweenTransferErrorMessage = [
   'Un spécialiste va vous répondre dans quelques instants...',
@@ -42,6 +43,7 @@ class IadvizeAdapter extends WebAdapter {
   constructor(bot) {
     super(bot);
     this.closeSettings = getCloseConversationSettings(bot.config.adapter);
+    this.delayBetweenMessages = bot.config.adapter.delayBetweenMessages || DELAY_BETWEEN_MESSAGES;
     this.handleTransfer = this.handleTransfer.bind(this);
     this.handleCloseConversation = this.handleCloseConversation.bind(this);
   }
@@ -283,7 +285,7 @@ class IadvizeAdapter extends WebAdapter {
       return res.send({
         idOperator,
         idConversation: conversationId,
-        replies: filteredMessages.map(adaptMessage),
+        replies: adaptMessages(filteredMessages, this.delayBetweenMessages),
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -94,6 +94,20 @@ const adaptMessage = (message) => {
 };
 
 /**
+ * Adapt messages to iAdvize platform format
+ * with possibility to insert an await between each messages
+ * @param botMessages {Object[]} bot messages to adapt
+ * @param awaitDuration {Number} duration to await between messages
+ */
+const adaptMessages = (botMessages, awaitDuration = 0) => botMessages
+  .reduce((messages, botMessage, index) => {
+    if (index === (botMessages.length - 1) || awaitDuration === 0) {
+      return [...messages, adaptMessage(botMessage)];
+    }
+    return [...messages, adaptMessage(botMessage), adaptAwait(awaitDuration)];
+  }, []);
+
+/**
  * Returns close conversation settings so that the bot knows how to handle
  * Conversation closing
  * @param params
@@ -193,6 +207,7 @@ module.exports = {
   adaptClose,
   adaptQuickreplies,
   adaptMessage,
+  adaptMessages,
   getCloseConversationSettings,
   getOperatorTransferRules,
 };
