@@ -150,8 +150,8 @@ describe('adapting messages', () => {
       {
         type: 'await',
         duration: {
-          unit: 'seconds',
-          value: awaitDuration,
+          unit: 'millis',
+          value: parseInt((awaitDuration * 1000), 10),
         },
       },
       {

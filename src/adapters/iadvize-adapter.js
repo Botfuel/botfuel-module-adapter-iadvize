@@ -282,10 +282,13 @@ class IadvizeAdapter extends WebAdapter {
       const filteredMessages = botMessages.filter(m => ['close', 'transfer'].indexOf(m.type) === -1);
       logger.debug('[6][route:conversationMessage] handle visitor message, botMessages to send', filteredMessages);
 
+      const replies = adaptMessages(filteredMessages, this.delayBetweenMessages);
+      logger.info('[7][route:conversationMessage] bot replies (adapted bot messages)', replies);
+
       return res.send({
         idOperator,
         idConversation: conversationId,
-        replies: adaptMessages(filteredMessages, this.delayBetweenMessages),
+        replies,
         variables: [],
         createdAt: new Date(),
         updatedAt: new Date(),

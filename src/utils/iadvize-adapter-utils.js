@@ -25,14 +25,14 @@ const adaptText = text => ({
 
 /**
  * Adapt await action to iAdvize platform format
- * @param duration
+ * @param duration in seconds
  * @returns {Object}
  */
 const adaptAwait = duration => ({
   type: 'await',
   duration: {
-    unit: 'seconds',
-    value: duration,
+    unit: 'millis',
+    value: parseInt((duration * 1000), 10),
   },
 });
 
