@@ -35,7 +35,7 @@ module.exports = {
 To transfer to a distribution rule, include a `TransferAction` in the messages returned by your view:
 
 ```js
-const { View } = require('botfuel-dialog');
+const { View, BotTextMessage } = require('botfuel-dialog');
 const { TransferAction } = require('botfuel-module-adapter-iadvize');
 
 class TransferView extends View {
@@ -57,8 +57,7 @@ class TransferView extends View {
 ### Close event
 
 With this Adapter the close event is automatically triggered at the end of bot responses
-and the conversation is closed if no more messages are sent during the time before the close event is sent
-to iAdvize.
+and the conversation is closed if no more messages are sent during the time before the close event is triggered by iAdvize.
 
 #### Configuration
 
@@ -99,7 +98,7 @@ but in that case you will configure and trigger the close event through a view.
 To use it, include a `CloseAction` in the messages returned by your view:
 
 ```js
-const { View } = require('botfuel-dialog');
+const { View, BotTextMessage } = require('botfuel-dialog');
 const { CloseAction } = require('botfuel-module-adapter-iadvize');
 
 class TransferView extends View {
@@ -126,3 +125,22 @@ if there is still no news messages from the user or the bot.
 - **closeWarningDelay**: 30 seconds
 - **closeWarningMessage**: "The conversation will be closed in a few seconds"
 - **closeDelay**: 30 seconds
+
+## Add a delay before your quick replies message
+
+To add a delay before displaying the quick replies message you can add a `delay` option to the message
+
+```js
+const { View, BotTextMessage, QuickRepliesMessage } = require('botfuel-dialog');
+
+class DelayedQuickRepliesView extends View {
+  render() {
+    return [
+      new BotTextMessage('I’m going to send quick replies with a delay of 500ms.'),
+      new QuickrepliesMessage(['hello', 'world'], {
+        delay: 0.5,
+      }),
+    ];
+  }
+}
+```
