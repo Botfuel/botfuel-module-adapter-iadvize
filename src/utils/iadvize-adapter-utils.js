@@ -6,9 +6,23 @@ const logger = Logger('IAdvizeAdapterUtils');
 const DEFAULT_CLOSE_DELAY = 30; // seconds
 const DEFAULT_WARNING_DELAY = 30; // seconds
 const DEFAULT_WARNING_MESSAGE = 'The conversation will be closed in a few seconds';
-const DELAY_BEFORE_QR = 0.5; // seconds
+const DELAY_BEFORE_MESSAGE = 0.5; // seconds
+const DELAY_BEFORE_QR = 0.75; // seconds
 
 // Messages adaptation
+
+/**
+ * Adapt await action to iAdvize platform format
+ * @param duration in seconds
+ * @returns {Object}
+ */
+const adaptAwait = duration => ({
+  type: 'await',
+  duration: {
+    unit: 'millis',
+    value: parseInt((duration * 1000), 10),
+  },
+});
 
 /**
  * Adapt text message to iAdvize platform format
@@ -22,19 +36,6 @@ const adaptText = text => ({
     value: text,
   },
   quickReplies: [],
-});
-
-/**
- * Adapt await action to iAdvize platform format
- * @param duration in seconds
- * @returns {Object}
- */
-const adaptAwait = duration => ({
-  type: 'await',
-  duration: {
-    unit: 'millis',
-    value: parseInt((duration * 1000), 10),
-  },
 });
 
 /**
@@ -71,21 +72,18 @@ const adaptClose = (message) => {
  * @param message
  * @returns {Object}
  */
-const adaptQuickreplies = message => ([
-  adaptAwait((message.payload.options && message.payload.options.delay) || DELAY_BEFORE_QR),
-  {
-    type: 'message',
-    payload: {
-      contentType: 'text',
-      value: (message.payload.options && message.payload.options.text) || '',
-    },
-    quickReplies: message.payload.value.map(qr => ({
-      contentType: 'text/quick-reply',
-      value: qr,
-      idQuickReply: qr,
-    })),
+const adaptQuickreplies = message => ({
+  type: 'message',
+  payload: {
+    contentType: 'text',
+    value: (message.payload.options && message.payload.options.text) || '',
   },
-]);
+  quickReplies: message.payload.value.map(qr => ({
+    contentType: 'text/quick-reply',
+    value: qr,
+    idQuickReply: qr,
+  })),
+});
 
 /**
  * Adapt message to iAdvize platform format
@@ -98,9 +96,9 @@ const adaptMessage = (message) => {
     case 'text':
       return [adaptText(message.payload.value)];
     case 'quickreplies':
-      return adaptQuickreplies(message);
+      return [adaptQuickreplies(message)];
     case 'close':
-      return adaptClose(message);
+      return adaptClose(message); // already an array
     case 'transfer':
       // transfer action is handled by the adapter and shouldn't be adapted for replies
       return [];
@@ -108,6 +106,29 @@ const adaptMessage = (message) => {
       throw new Error(`Message of type ${message.type} are not supported by this adapter.`);
   }
 };
+
+/**
+ * Adapt a list of message to iAdvize platform format with a delay between each
+ * @param botMessages
+ * @returns {*}
+ */
+const adaptMessages = botMessages => botMessages
+  .reduce((messages, msg, index) => {
+    // no delay before the first message
+    // or if message is a close message
+    if (index === 0 || msg.type === 'close') {
+      return [...messages, ...adaptMessage(msg)];
+    }
+
+    // quickreplies message with delay
+    if (msg.type === 'quickreplies') {
+      const qrDelay = (msg.payload.options && msg.payload.options.delay) || DELAY_BEFORE_QR;
+      return [...messages, adaptAwait(qrDelay), ...adaptMessage(msg)];
+    }
+
+    // other messages with delay
+    return [...messages, adaptAwait(DELAY_BEFORE_MESSAGE), ...adaptMessage(msg)];
+  }, []);
 
 /**
  * Returns close conversation settings so that the bot knows how to handle
@@ -209,6 +230,7 @@ module.exports = {
   adaptClose,
   adaptQuickreplies,
   adaptMessage,
+  adaptMessages,
   getCloseConversationSettings,
   getOperatorTransferRules,
 };

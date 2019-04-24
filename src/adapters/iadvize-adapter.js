@@ -20,6 +20,7 @@ const {
   adaptTransfer,
   adaptAwait,
   adaptMessage,
+  adaptMessages,
   getCloseConversationSettings,
   getOperatorTransferRules,
 } = require('../utils/iadvize-adapter-utils');
@@ -213,7 +214,8 @@ class IadvizeAdapter extends WebAdapter {
          * STEP 4: computes replies to send to the visitor
          */
 
-        const replies = botMessages.reduce((list, msg) => [...list, ...adaptMessage(msg)], []);
+        // const replies = botMessages.reduce((list, msg) => [...list, ...adaptMessage(msg)], []);
+        const replies = adaptMessages(botMessages);
         logger.info('[5][route:conversationMessage] bot replies (adapted bot messages)', replies);
 
         return res.send({
