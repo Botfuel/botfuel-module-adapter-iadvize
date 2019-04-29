@@ -15,7 +15,7 @@
  */
 
 const IadvizeAdapter = require('../src/adapters/iadvize-adapter');
-const { adaptMessage } = require('../src/utils/iadvize-adapter-utils');
+const { adaptMessage, adaptMessages } = require('../src/utils/iadvize-adapter-utils');
 
 describe('adapting messages', () => {
   test('should generate the proper text message json', () => {
@@ -27,15 +27,17 @@ describe('adapting messages', () => {
         },
         sender: 'bot',
         type: 'text',
-      })
-    ).toEqual({
-      type: 'message',
-      payload: {
-        contentType: 'text',
-        value: 'Hello bot',
+      }),
+    ).toEqual([
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'Hello bot',
+        },
+        quickReplies: [],
       },
-      quickReplies: [],
-    });
+    ]);
   });
 
   test('should generate the proper quickreplies message json', () => {
@@ -48,57 +50,268 @@ describe('adapting messages', () => {
         sender: 'bot',
         type: 'quickreplies',
       }),
-    ).toEqual({
-      type: 'message',
-      payload: {
-        contentType: 'text',
-        value: '',
+    ).toEqual([
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: '',
+        },
+        quickReplies: [
+          {
+            contentType: 'text/quick-reply',
+            value: 'yes',
+            idQuickReply: 'yes',
+          },
+          {
+            contentType: 'text/quick-reply',
+            value: 'no',
+            idQuickReply: 'no',
+          },
+        ],
       },
-      quickReplies: [
-        {
-          contentType: 'text/quick-reply',
-          value: 'yes',
-          idQuickReply: 'yes',
-        },
-        {
-          contentType: 'text/quick-reply',
-          value: 'no',
-          idQuickReply: 'no',
-        },
-      ],
-    });
+    ]);
   });
 
-  /**
-  test('should generate the proper transfer message json', () => {
+  test('should generate the proper quickreplies message json', () => {
     expect(
       adaptMessage({
         id: 1,
         payload: {
-          value: null,
+          value: ['yes', 'no'],
           options: {
-            distributionRuleId: 'THE_RULE_ID'
-          }
+            text: 'QuickReplies text option',
+          },
         },
         sender: 'bot',
-        type: 'transfer',
-      })
-    ).toEqual({
-      type: 'transfer',
-      distributionRule: 'THE_RULE_ID',
-    });
+        type: 'quickreplies',
+      }),
+    ).toEqual([
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'QuickReplies text option',
+        },
+        quickReplies: [
+          {
+            contentType: 'text/quick-reply',
+            value: 'yes',
+            idQuickReply: 'yes',
+          },
+          {
+            contentType: 'text/quick-reply',
+            value: 'no',
+            idQuickReply: 'no',
+          },
+        ],
+      },
+    ]);
   });
-   */
 
   test('should generate the proper close message json', () => {
     expect(
       adaptMessage({
         id: 1,
-        payload: null,
+        payload: {},
         sender: 'bot',
         type: 'close',
-      })
-    ).toEqual({ type: 'close' });
+      }),
+    ).toEqual([
+      {
+        type: 'await',
+        duration: {
+          unit: 'millis',
+          value: 30000,
+        },
+      },
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'The conversation will be closed in a few seconds',
+        },
+        quickReplies: [],
+      },
+      {
+        type: 'await',
+        duration: {
+          unit: 'millis',
+          value: 30000,
+        },
+      },
+      { type: 'close' },
+    ]);
+  });
+
+  test('should generate the proper json for many messages with no await provided', () => {
+    expect(
+      adaptMessages([
+        {
+          id: 1,
+          payload: {
+            value: 'Hello bot',
+          },
+          sender: 'bot',
+          type: 'text',
+        },
+        {
+          id: 2,
+          payload: {
+            value: 'Hello bot 2',
+          },
+          sender: 'bot',
+          type: 'text',
+        },
+        {
+          id: 3,
+          payload: {
+            value: ['yes', 'no'],
+            options: {
+              text: 'QuickReplies text option',
+            },
+          },
+          sender: 'bot',
+          type: 'quickreplies',
+        },
+      ]),
+    ).toEqual([
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'Hello bot',
+        },
+        quickReplies: [],
+      },
+      {
+        type: 'await',
+        duration: {
+          unit: 'millis',
+          value: 500,
+        },
+      },
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'Hello bot 2',
+        },
+        quickReplies: [],
+      },
+      {
+        type: 'await',
+        duration: {
+          unit: 'millis',
+          value: 750,
+        },
+      },
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'QuickReplies text option',
+        },
+        quickReplies: [
+          {
+            contentType: 'text/quick-reply',
+            value: 'yes',
+            idQuickReply: 'yes',
+          },
+          {
+            contentType: 'text/quick-reply',
+            value: 'no',
+            idQuickReply: 'no',
+          },
+        ],
+      },
+    ]);
+  });
+
+  test('should generate the proper json for many messages with an await option provided', () => {
+    const awaitDuration = 0.2;
+    expect(
+      adaptMessages([
+        {
+          id: 1,
+          payload: {
+            value: 'Hello bot',
+          },
+          sender: 'bot',
+          type: 'text',
+        },
+        {
+          id: 2,
+          payload: {
+            value: 'Hello bot 2',
+          },
+          sender: 'bot',
+          type: 'text',
+        },
+        {
+          id: 3,
+          payload: {
+            value: ['yes', 'no'],
+            options: {
+              text: 'QuickReplies text option',
+              delay: awaitDuration,
+            },
+          },
+          sender: 'bot',
+          type: 'quickreplies',
+        },
+      ]),
+    ).toEqual([
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'Hello bot',
+        },
+        quickReplies: [],
+      },
+      {
+        type: 'await',
+        duration: {
+          unit: 'millis',
+          value: 500,
+        },
+      },
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'Hello bot 2',
+        },
+        quickReplies: [],
+      },
+      {
+        type: 'await',
+        duration: {
+          unit: 'millis',
+          value: 200,
+        },
+      },
+      {
+        type: 'message',
+        payload: {
+          contentType: 'text',
+          value: 'QuickReplies text option',
+        },
+        quickReplies: [
+          {
+            contentType: 'text/quick-reply',
+            value: 'yes',
+            idQuickReply: 'yes',
+          },
+          {
+            contentType: 'text/quick-reply',
+            value: 'no',
+            idQuickReply: 'no',
+          },
+        ],
+      },
+    ]);
   });
 });
 
@@ -132,7 +345,7 @@ describe('Close settings', () => {
       config: {
         adapter: {
           closeDelay: 100,
-          closeWarningDelay: 80
+          closeWarningDelay: 80,
         },
       },
     });
@@ -166,7 +379,7 @@ describe('Close settings', () => {
         adapter: {
           closeDelay: 400,
           closeWarningDelay: 300,
-          closeWarningMessage: (delay) => `The conversation will be closed in ${delay} seconds`,
+          closeWarningMessage: delay => `The conversation will be closed in ${delay} seconds`,
         },
       },
     });
