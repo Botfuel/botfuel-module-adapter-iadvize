@@ -193,7 +193,7 @@ const getOperatorTransferRules = (operator, names) => {
     return [];
   }
 
-  // using a loop to keep the keep to order defined in transfer action botfuelRoutingRuleNames
+  // using a loop to keep the keep to order defined in transfer action botfuelRoutingRules
   const rules = [];
   for (const name of names) {
     const rule = operator.botfuelRoutingRules.find(r => r.enabled && r.name === name);

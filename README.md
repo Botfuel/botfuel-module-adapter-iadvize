@@ -43,7 +43,7 @@ class TransferView extends View {
     return [
       new BotTextMessage('I’m going to transfer you, please wait :)'),
       new TransferAction({
-        botfuelRoutingRuleNames: ['RULE_NAME_1', 'RULE_NAME_2', ...],
+        botfuelRoutingRules: ['RULE_NAME_1', 'RULE_NAME_2', ...],
         // Transfer attempt failure message
         failureMessage: 'Sorry, nobody is available right now.',
         // Transfer attempt timeout, default 30 seconds
