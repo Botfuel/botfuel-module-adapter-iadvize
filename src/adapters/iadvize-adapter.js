@@ -132,7 +132,7 @@ class IadvizeAdapter extends WebAdapter {
       const { idOperator, message, operator } = req.body;
       await this.addUserIfNecessary(conversationId);
 
-      logger.debug(`[0][route:conversationMessage] idOperator=${idOperator} message=${message} operator=${operator}`);
+      logger.debug(`[0][route:conversationMessage] idOperator=${idOperator} message=${JSON.stringify(message)} operator=${JSON.stringify(operator)}`);
 
       /**
        * Message author is visitor
@@ -174,12 +174,12 @@ class IadvizeAdapter extends WebAdapter {
           const {
             awaitDuration,
             failureMessage,
-            distributionRuleLabels,
+            botfuelRoutingRules,
           } = transferMessage.payload.options;
           await this.bot.brain.userSet(conversationId, 'transfer', {
             awaitDuration,
             failureMessage,
-            distributionRules: getOperatorTransferRules(operator, distributionRuleLabels),
+            distributionRules: getOperatorTransferRules(operator, botfuelRoutingRules),
           });
         }
 
